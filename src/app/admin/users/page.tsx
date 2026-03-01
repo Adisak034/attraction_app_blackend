@@ -1,38 +1,38 @@
-'use client';
+import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import DataTable from 'datatables.net-dt';
+import 'datatables.net-dt/css/dataTables.dataTables.css';
+import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
 
-import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-
-// Interface based on the 'user' table schema
+// Interface based on the 'user_model' table schema
 interface User {
   user_id: number;
   user_name: string;
-  birth_date: string | null;
-  role: string | null;
+  password: string;
+  role: string;
 }
 
 const initialFormState = {
   user_name: '',
   password: '',
-  birth_date: '',
   role: 'user', // Default role
 };
 
 export default function UserAdminPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
+  const tableRef = useRef<HTMLTableElement>(null);
+  const dataTableRef = useRef<any>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState(initialFormState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/users');
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-      const data = await response.json();
+      const data = await apiGet('/api/users');
       setUsers(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -45,7 +45,36 @@ export default function UserAdminPage() {
     fetchUsers();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (loading) return;
+    if (!tableRef.current) return;
+
+    if (dataTableRef.current) {
+      dataTableRef.current.destroy();
+      dataTableRef.current = null;
+    }
+
+    if (users.length === 0) return;
+
+    dataTableRef.current = new DataTable(tableRef.current, {
+      pageLength: 10,
+      lengthMenu: [5, 10, 20, 50],
+      searching: true,
+      ordering: true,
+      paging: true,
+      info: true,
+      dom: 'lrtip',
+    });
+
+    return () => {
+      if (dataTableRef.current) {
+        dataTableRef.current.destroy();
+        dataTableRef.current = null;
+      }
+    };
+  }, [loading, users]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -57,24 +86,14 @@ export default function UserAdminPage() {
         return;
     }
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            ...formData,
-            birth_date: formData.birth_date || null, // Send null if empty
-        }),
+      await apiPost('/api/users', {
+        user_name: formData.user_name,
+        password: formData.password,
+        role: formData.role,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create user');
-      }
-
       setFormData(initialFormState);
-      fetchUsers(); // Refresh the list
+      fetchUsers();
       alert('User created successfully!');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -86,98 +105,143 @@ export default function UserAdminPage() {
       return;
     }
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-      });
+      await apiDelete(`/api/users/${userId}`);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete user');
-      }
-
-      fetchUsers(); // Refresh the list
+      fetchUsers();
       alert('User deleted successfully!');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
     }
   };
 
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">User Management</h1>
+  useEffect(() => {
+    const tableElement = tableRef.current;
+    if (!tableElement) return;
 
-      <div className="mb-6 p-6 border rounded-lg shadow-lg bg-white">
-        <h2 className="text-xl font-semibold mb-4">Add New User</h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="md:col-span-1">
-            <label htmlFor="user_name" className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
-            <input type="text" id="user_name" name="user_name" value={formData.user_name} onChange={handleInputChange} required className="w-full p-2 border rounded-md shadow-sm" />
-          </div>
-          <div className="md:col-span-1">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-            <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} required className="w-full p-2 border rounded-md shadow-sm" />
-          </div>
-          <div className="md:col-span-1">
-            <label htmlFor="birth_date" className="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
-            <input type="date" id="birth_date" name="birth_date" value={formData.birth_date} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm" />
-          </div>
-          <div className="md:col-span-1">
-            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-            <input type="text" id="role" name="role" value={formData.role} onChange={handleInputChange} placeholder="e.g., user, admin" className="w-full p-2 border rounded-md shadow-sm" />
-          </div>
-          <div className="md:col-span-2">
-            <button type="submit" className="w-full bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 font-semibold">
-              Add User
-            </button>
-          </div>
-        </form>
+    const handleTableClick = (event: Event) => {
+      const target = event.target as HTMLElement;
+      const editButton = target.closest('.edit-user-btn') as HTMLButtonElement | null;
+      const deleteButton = target.closest('.delete-user-btn') as HTMLButtonElement | null;
+
+      if (editButton) {
+        const userId = Number(editButton.dataset.userId);
+        if (Number.isFinite(userId)) {
+          navigate(`/admin/users/edit/${userId}`);
+        }
+        return;
+      }
+
+      if (deleteButton) {
+        const userId = Number(deleteButton.dataset.userId);
+        if (Number.isFinite(userId)) {
+          handleDelete(userId);
+        }
+      }
+    };
+
+    tableElement.addEventListener('click', handleTableClick);
+    return () => tableElement.removeEventListener('click', handleTableClick);
+  }, [users, navigate]);
+
+  return (
+    <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
+      {/* Header with Title and Add Button */}
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin')}
+            aria-label="ย้อนกลับ"
+            title="ย้อนกลับ"
+            className="h-10 w-10 flex items-center justify-center border rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
+        </div>
+        <button
+          onClick={() => {
+            setShowForm(!showForm);
+            setFormData(initialFormState);
+          }}
+          className="bg-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-blue-700 font-semibold"
+        >
+          + Add User
+        </button>
       </div>
 
-      <div className="p-4 border rounded-lg shadow-md bg-white">
-        <h2 className="text-xl font-semibold mb-2">Existing Users</h2>
-        {loading && <p>Loading...</p>}
-        {error && <p className="text-red-500">{error}</p>}
-        {!loading && !error && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">ID</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Username</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Birth Date</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Role</th>
-                  <th className="py-3 px-4 border-b text-center text-sm font-semibold text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.user_id} className="hover:bg-gray-50">
-                    <td className="py-2 px-4 border-b text-sm font-medium text-gray-500">{user.user_id}</td>
-                    <td className="py-2 px-4 border-b text-sm">{user.user_name}</td>
-                    <td className="py-2 px-4 border-b text-sm">{user.birth_date ? new Date(user.birth_date).toLocaleDateString() : 'N/A'}</td>
-                    <td className="py-2 px-4 border-b text-sm">{user.role}</td>
-                    <td className="py-2 px-4 border-b text-sm text-center">
-                      <div className="flex flex-col gap-2 items-center">
-                        <button
-                          onClick={() => router.push(`/admin/users/edit/${user.user_id}`)}
-                          className="bg-blue-500 text-white px-4 py-1 rounded text-xs font-medium hover:bg-blue-600 w-full"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(user.user_id)}
-                          className="bg-red-500 text-white px-4 py-1 rounded text-xs font-medium hover:bg-red-600 w-full"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Add User Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Add New User</h2>
+              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label htmlFor="user_name" className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
+                <input type="text" id="user_name" name="user_name" value={formData.user_name} onChange={handleInputChange} required className="w-full p-2 border rounded-md shadow-sm" />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} required className="w-full p-2 border rounded-md shadow-sm" />
+              </div>
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select id="role" name="role" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full p-2 border rounded-md shadow-sm">
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="md:col-span-3 flex gap-4">
+                <button type="submit" className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 font-semibold">
+                  Add User
+                </button>
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold">
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Table Section */}
+      <div className="border rounded-lg shadow-md bg-white overflow-hidden">
+        <div className="p-6 border-b flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800">Users</h2>
+        </div>
+        {error && <p className="text-red-500 mb-4 p-6">{error}</p>}
+        {loading && <p className="text-gray-500 p-6">Loading...</p>}
+        <div className="overflow-x-auto">
+          <table ref={tableRef} className="w-full display compact hover stripe">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Password</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.user_id} data-id={user.user_id}>
+                  <td>{user.user_id}</td>
+                  <td>{user.user_name}</td>
+                  <td>{user.role || '-'}</td>
+                  <td>••••••••</td>
+                  <td>
+                    <div className="flex gap-2 justify-center">
+                      <button type="button" className="edit-user-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm" data-user-id={user.user_id}>Edit</button>
+                      <button type="button" className="delete-user-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm" data-user-id={user.user_id}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

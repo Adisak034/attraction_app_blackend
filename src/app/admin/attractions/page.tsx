@@ -1,7 +1,9 @@
-'use client';
-
-import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, FormEvent, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import DataTable from 'datatables.net-dt';
+import 'datatables.net-dt/css/dataTables.dataTables.css';
+import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
 
 // Interfaces based on the database schema
 interface Attraction {
@@ -14,6 +16,7 @@ interface Attraction {
   lng: number | null;
   sacred_obj: string | null;
   offering: string | null;
+  attraction_image: string | null;
   categories: string; // This comes from the GROUP_CONCAT in the GET API
 }
 
@@ -51,6 +54,8 @@ const initialFormState = {
 
 export default function AttractionAdminPage() {
   // Data states
+  const tableRef = useRef<HTMLTableElement>(null);
+  const dataTableRef = useRef<any>(null);
   const [attractions, setAttractions] = useState<Attraction[]>([]);
   const [types, setTypes] = useState<Type[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -61,30 +66,24 @@ export default function AttractionAdminPage() {
   const [formData, setFormData] = useState(initialFormState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const [showForm, setShowForm] = useState(false);
+  const navigate = useNavigate();
 
   // Fetch all necessary data for the page
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [attractionsRes, categoriesRes, typesRes, districtsRes, sectsRes] = await Promise.all([
-        fetch('/api/attraction'),
-        fetch('/api/category'),
-        fetch('/api/type'),
-        fetch('/api/district'),
-        fetch('/api/sect'),
-      ]);
+      const attractionsData = await apiGet('/api/attraction');
+      const categoriesData = await apiGet('/api/category');
+      const typesData = await apiGet('/api/type');
+      const districtsData = await apiGet('/api/district');
+      const sectsData = await apiGet('/api/sect');
 
-      if (!attractionsRes.ok || !categoriesRes.ok || !typesRes.ok || !districtsRes.ok || !sectsRes.ok) {
-        throw new Error('Failed to fetch initial data');
-      }
-
-      setAttractions(await attractionsRes.json());
-      setCategories(await categoriesRes.json());
-      setTypes(await typesRes.json());
-      setDistricts(await districtsRes.json());
-      setSects(await sectsRes.json());
-
+      setAttractions(attractionsData);
+      setCategories(categoriesData);
+      setTypes(typesData);
+      setDistricts(districtsData);
+      setSects(sectsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
@@ -95,6 +94,55 @@ export default function AttractionAdminPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!tableRef.current) return;
+
+    if (dataTableRef.current) {
+      dataTableRef.current.destroy();
+      dataTableRef.current = null;
+    }
+
+    if (attractions.length === 0) return;
+
+    dataTableRef.current = new DataTable(tableRef.current, {
+      pageLength: 10,
+      lengthMenu: [5, 10, 20, 50],
+      searching: true,
+      ordering: true,
+      paging: true,
+      info: true,
+      dom: 'lrtip',
+    });
+
+    return () => {
+      if (dataTableRef.current) {
+        dataTableRef.current.destroy();
+        dataTableRef.current = null;
+      }
+    };
+  }, [loading, attractions]);
+
+  const formatCoordinate = (value: number | string | null | undefined) => {
+    if (value === null || value === undefined || value === '') return '-';
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? String(value) : '-';
+  };
+
+  const typeNameMap = new Map(types.map((item) => [item.type_id, item.type_name]));
+  const districtNameMap = new Map(districts.map((item) => [item.district_id, item.district_name]));
+  const sectNameMap = new Map(sects.map((item) => [item.sect_id, item.sect_name]));
+
+  const getLookupName = (
+    id: number | string | null | undefined,
+    lookupMap: Map<number, string>
+  ) => {
+    if (id === null || id === undefined || id === '') return '-';
+    const parsedId = Number(id);
+    if (!Number.isFinite(parsedId)) return '-';
+    return lookupMap.get(parsedId) || String(id);
+  };
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -120,25 +168,14 @@ export default function AttractionAdminPage() {
         return;
     }
     try {
-      const response = await fetch('/api/attraction', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            ...formData,
-            lat: formData.lat ? parseFloat(formData.lat) : null,
-            lng: formData.lng ? parseFloat(formData.lng) : null,
-            type_id: formData.type_id ? parseInt(formData.type_id, 10) : null,
-            district_id: formData.district_id ? parseInt(formData.district_id, 10) : null,
-            sect_id: formData.sect_id ? parseInt(formData.sect_id, 10) : null,
-        }),
+      await apiPost('/api/attraction', {
+        ...formData,
+        lat: formData.lat ? parseFloat(formData.lat) : null,
+        lng: formData.lng ? parseFloat(formData.lng) : null,
+        type_id: formData.type_id ? parseInt(formData.type_id, 10) : null,
+        district_id: formData.district_id ? parseInt(formData.district_id, 10) : null,
+        sect_id: formData.sect_id ? parseInt(formData.sect_id, 10) : null,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create attraction');
-      }
 
       setFormData(initialFormState); // Reset form
       fetchData(); // Refresh data
@@ -154,15 +191,7 @@ export default function AttractionAdminPage() {
       return;
     }
     try {
-      const response = await fetch(`/api/attraction/${attractionId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete attraction');
-      }
-
+      await apiDelete(`/api/attraction/${attractionId}`);
       fetchData(); // Refresh data
       alert('Attraction deleted successfully!');
     } catch (err) {
@@ -170,139 +199,200 @@ export default function AttractionAdminPage() {
     }
   };
 
+  useEffect(() => {
+    const tableElement = tableRef.current;
+    if (!tableElement) return;
+
+    const handleTableClick = (event: Event) => {
+      const target = event.target as HTMLElement;
+      const editButton = target.closest('.edit-attraction-btn') as HTMLButtonElement | null;
+      const deleteButton = target.closest('.delete-attraction-btn') as HTMLButtonElement | null;
+
+      if (editButton) {
+        const attractionId = Number(editButton.dataset.attractionId);
+        if (Number.isFinite(attractionId)) {
+          navigate(`/admin/attractions/edit/${attractionId}`);
+        }
+        return;
+      }
+
+      if (deleteButton) {
+        const attractionId = Number(deleteButton.dataset.attractionId);
+        if (Number.isFinite(attractionId)) {
+          handleDelete(attractionId);
+        }
+      }
+    };
+
+    tableElement.addEventListener('click', handleTableClick);
+    return () => tableElement.removeEventListener('click', handleTableClick);
+  }, [attractions, navigate]);
+
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Attraction Management</h1>
-
-      {/* Form Section */}
-      <div className="mb-8 p-6 border rounded-lg shadow-lg bg-white">
-        <h2 className="text-xl font-semibold mb-4">Add New Attraction</h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Main Details */}
-          <div className="md:col-span-2 lg:col-span-3">
-            <label htmlFor="attraction_name" className="block text-sm font-medium text-gray-700 mb-1">Attraction Name *</label>
-            <input type="text" id="attraction_name" name="attraction_name" value={formData.attraction_name} onChange={handleInputChange} required className="w-full p-2 border rounded-md shadow-sm" />
-          </div>
-          
-          {/* Dropdowns */}
-          <div>
-            <label htmlFor="type_id" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <select id="type_id" name="type_id" value={formData.type_id} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm">
-              <option value="">Select Type</option>
-              {types.map(t => <option key={t.type_id} value={t.type_id}>{t.type_name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="district_id" className="block text-sm font-medium text-gray-700 mb-1">District</label>
-            <select id="district_id" name="district_id" value={formData.district_id} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm">
-              <option value="">Select District</option>
-              {districts.map(d => <option key={d.district_id} value={d.district_id}>{d.district_name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="sect_id" className="block text-sm font-medium text-gray-700 mb-1">Sect</label>
-            <select id="sect_id" name="sect_id" value={formData.sect_id} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm">
-              <option value="">Select Sect</option>
-              {sects.map(s => <option key={s.sect_id} value={s.sect_id}>{s.sect_name}</option>)}
-            </select>
-          </div>
-
-          {/* Coordinates */}
-          <div>
-            <label htmlFor="lat" className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
-            <input type="number" step="any" id="lat" name="lat" value={formData.lat} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm" />
-          </div>
-          <div>
-            <label htmlFor="lng" className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
-            <input type="number" step="any" id="lng" name="lng" value={formData.lng} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm" />
-          </div>
-
-          {/* Text Areas */}
-          <div className="md:col-span-2 lg:col-span-3">
-            <label htmlFor="sacred_obj" className="block text-sm font-medium text-gray-700 mb-1">Sacred Objects</label>
-            <textarea id="sacred_obj" name="sacred_obj" value={formData.sacred_obj} onChange={handleInputChange} rows={3} className="w-full p-2 border rounded-md shadow-sm" />
-          </div>
-          <div className="md:col-span-2 lg:col-span-3">
-            <label htmlFor="offering" className="block text-sm font-medium text-gray-700 mb-1">Offerings</label>
-            <textarea id="offering" name="offering" value={formData.offering} onChange={handleInputChange} rows={3} className="w-full p-2 border rounded-md shadow-sm" />
-          </div>
-
-          {/* Categories Checkboxes */}
-          <div className="md:col-span-2 lg:col-span-3">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Categories</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-4 border rounded-md max-h-48 overflow-y-auto">
-              {categories.map(cat => (
-                <label key={cat.category_id} className="flex items-center space-x-2 cursor-pointer">
-                  <input type="checkbox" checked={formData.category_ids.includes(cat.category_id)} onChange={() => handleCategoryChange(cat.category_id)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                  <span className="text-sm text-gray-700">{cat.category_name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="md:col-span-2 lg:col-span-3">
-            <button type="submit" className="w-full bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold">
-              Add Attraction
-            </button>
-          </div>
-        </form>
+    <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
+      {/* Header with Title and Add Button */}
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin')}
+            aria-label="ย้อนกลับ"
+            title="ย้อนกลับ"
+            className="h-10 w-10 flex items-center justify-center border rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">Attraction Management</h1>
+        </div>
+        <button
+          onClick={() => {
+            setShowForm(!showForm);
+            setFormData(initialFormState);
+          }}
+          className="bg-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-blue-700 font-semibold"
+        >
+          + Add Attraction
+        </button>
       </div>
 
-      {/* Table Section */}
-      <div className="p-4 border rounded-lg shadow-md bg-white">
-        <h2 className="text-xl font-semibold mb-2">Existing Attractions</h2>
-        {loading && <p>Loading...</p>}
-        {error && <p className="text-red-500">{error}</p>}
-        {!loading && !error && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">ID</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Name</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Categories</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">District</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Type</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Sect</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Sacred Objects</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Offerings</th>
-                  <th className="py-3 px-4 border-b text-center text-sm font-semibold text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attractions.map((attraction) => (
-                  <tr key={attraction.attraction_id} className="hover:bg-gray-50">
-                    <td className="py-2 px-4 border-b text-sm font-medium text-gray-500">{attraction.attraction_id}</td>
-                    <td className="py-2 px-4 border-b text-sm">{attraction.attraction_name}</td>
-                    <td className="py-2 px-4 border-b text-sm">{attraction.categories || 'N/A'}</td>
-                    <td className="py-2 px-4 border-b text-sm">{districts.find(d => d.district_id === attraction.district_id)?.district_name || 'N/A'}</td>
-                    <td className="py-2 px-4 border-b text-sm">{types.find(t => t.type_id === attraction.type_id)?.type_name || 'N/A'}</td>
-                    <td className="py-2 px-4 border-b text-sm">{sects.find(s => s.sect_id === attraction.sect_id)?.sect_name || 'N/A'}</td>
-                    <td className="py-2 px-4 border-b text-sm">{attraction.sacred_obj || 'N/A'}</td>
-                    <td className="py-2 px-4 border-b text-sm">{attraction.offering || 'N/A'}</td>
-                    <td className="py-2 px-4 border-b text-sm text-center">
-                        <div className="flex flex-col gap-2 items-center">
-                            <button
-                                onClick={() => router.push(`/admin/attractions/edit/${attraction.attraction_id}`)}
-                                className="bg-blue-500 text-white px-4 py-1 rounded text-xs font-medium hover:bg-blue-600 w-full"
-                            >
-                                Edit
-                            </button>
-                            <button
-                                onClick={() => handleDelete(attraction.attraction_id)}
-                                className="bg-red-500 text-white px-4 py-1 rounded text-xs font-medium hover:bg-red-600 w-full"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </td>
-                  </tr>
+      {/* Add Attraction Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-6xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Add New Attraction</h2>
+              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Main Details */}
+            <div className="md:col-span-2 lg:col-span-3">
+              <label htmlFor="attraction_name" className="block text-sm font-medium text-gray-700 mb-1">Attraction Name *</label>
+              <input type="text" id="attraction_name" name="attraction_name" value={formData.attraction_name} onChange={handleInputChange} required className="w-full p-2 border rounded-md shadow-sm" />
+            </div>
+            
+            {/* Dropdowns */}
+            <div>
+              <label htmlFor="type_id" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select id="type_id" name="type_id" value={formData.type_id} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm">
+                <option value="">Select Type</option>
+                {types.map(t => <option key={t.type_id} value={t.type_id}>{t.type_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="district_id" className="block text-sm font-medium text-gray-700 mb-1">District</label>
+              <select id="district_id" name="district_id" value={formData.district_id} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm">
+                <option value="">Select District</option>
+                {districts.map(d => <option key={d.district_id} value={d.district_id}>{d.district_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="sect_id" className="block text-sm font-medium text-gray-700 mb-1">Sect</label>
+              <select id="sect_id" name="sect_id" value={formData.sect_id} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm">
+                <option value="">Select Sect</option>
+                {sects.map(s => <option key={s.sect_id} value={s.sect_id}>{s.sect_name}</option>)}
+              </select>
+            </div>
+
+            {/* Coordinates */}
+            <div>
+              <label htmlFor="lat" className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+              <input type="number" step="any" id="lat" name="lat" value={formData.lat} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm" />
+            </div>
+            <div>
+              <label htmlFor="lng" className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+              <input type="number" step="any" id="lng" name="lng" value={formData.lng} onChange={handleInputChange} className="w-full p-2 border rounded-md shadow-sm" />
+            </div>
+
+            {/* Text Areas */}
+            <div className="md:col-span-2 lg:col-span-3">
+              <label htmlFor="sacred_obj" className="block text-sm font-medium text-gray-700 mb-1">Sacred Objects</label>
+              <textarea id="sacred_obj" name="sacred_obj" value={formData.sacred_obj} onChange={handleInputChange} rows={3} className="w-full p-2 border rounded-md shadow-sm" />
+            </div>
+            <div className="md:col-span-2 lg:col-span-3">
+              <label htmlFor="offering" className="block text-sm font-medium text-gray-700 mb-1">Offerings</label>
+              <textarea id="offering" name="offering" value={formData.offering} onChange={handleInputChange} rows={3} className="w-full p-2 border rounded-md shadow-sm" />
+            </div>
+
+            {/* Categories Checkboxes */}
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Categories</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-4 border rounded-md max-h-48 overflow-y-auto bg-gray-50">
+                {categories.map(cat => (
+                  <label key={cat.category_id} className="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.category_ids.includes(cat.category_id)} onChange={() => handleCategoryChange(cat.category_id)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <span className="text-sm text-gray-700">{cat.category_name}</span>
+                  </label>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+
+              {/* Submit Button */}
+              <div className="md:col-span-2 lg:col-span-3 flex gap-4">
+                <button type="submit" className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold">
+                  Add Attraction
+                </button>
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold">
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Table Section */}
+      <div className="border rounded-lg shadow-md bg-white overflow-hidden">
+        <div className="p-6 border-b flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800">Attractions</h2>
+          <div className="flex gap-4">
+            <div className="relative">
+              <input type="text" placeholder="Search..." className="px-4 py-2 border rounded-md text-sm w-64" />
+              <svg className="absolute right-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
+          </div>
+        </div>
+        {error && <p className="text-red-500 mb-4 p-6">{error}</p>}
+        {loading && <p className="text-gray-500 p-6">Loading...</p>}
+        <div className="overflow-x-auto">
+          <table ref={tableRef} className="w-full display compact hover stripe">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>District</th>
+                <th>Sect</th>
+                <th>Lat</th>
+                <th>Lng</th>
+                <th>Sacred Objects</th>
+                <th>Offering</th>
+                <th>Categories</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attractions.map((attr) => (
+                <tr key={attr.attraction_id} data-id={attr.attraction_id}>
+                  <td>{attr.attraction_id}</td>
+                  <td>{attr.attraction_name}</td>
+                  <td>{getLookupName(attr.type_id as number | string | null | undefined, typeNameMap)}</td>
+                  <td>{getLookupName(attr.district_id as number | string | null | undefined, districtNameMap)}</td>
+                  <td>{getLookupName(attr.sect_id as number | string | null | undefined, sectNameMap)}</td>
+                  <td>{formatCoordinate(attr.lat as number | string | null | undefined)}</td>
+                  <td>{formatCoordinate(attr.lng as number | string | null | undefined)}</td>
+                  <td title={String(attr.sacred_obj || '')}>{attr.sacred_obj ? String(attr.sacred_obj).substring(0, 30) + (String(attr.sacred_obj).length > 30 ? '...' : '') : '-'}</td>
+                  <td title={String(attr.offering || '')}>{attr.offering ? String(attr.offering).substring(0, 30) + (String(attr.offering).length > 30 ? '...' : '') : '-'}</td>
+                  <td>{attr.categories || '-'}</td>
+                  <td>
+                    <div className="flex gap-2 justify-center">
+                      <button type="button" className="edit-attraction-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm" data-attraction-id={attr.attraction_id}>Edit</button>
+                      <button type="button" className="delete-attraction-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm" data-attraction-id={attr.attraction_id}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

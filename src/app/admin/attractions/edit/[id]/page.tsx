@@ -1,7 +1,6 @@
-'use client';
-
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useNavigate, useParams } from 'react-router-dom';
+import { apiGet, apiPut } from '@/lib/apiClient';
 
 // Interfaces (can be shared from a common types file later)
 interface Category {
@@ -37,7 +36,7 @@ interface AttractionFormData {
 }
 
 export default function EditAttractionPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const params = useParams();
   const id = params.id as string;
 
@@ -69,23 +68,16 @@ export default function EditAttractionPage() {
       try {
         setLoading(true);
         // Fetch all dropdown data and the specific attraction data in parallel
-        const [attractionRes, categoriesRes, typesRes, districtsRes, sectsRes] = await Promise.all([
-          fetch(`/api/attraction/${id}`),
-          fetch('/api/category'),
-          fetch('/api/type'),
-          fetch('/api/district'),
-          fetch('/api/sect'),
-        ]);
+        const attractionData = await apiGet(`/api/attraction/${parseInt(id)}`);
+        const categoriesData = await apiGet('/api/category');
+        const typesData = await apiGet('/api/type');
+        const districtsData = await apiGet('/api/district');
+        const sectsData = await apiGet('/api/sect');
 
-        if (!attractionRes.ok || !categoriesRes.ok || !typesRes.ok || !districtsRes.ok || !sectsRes.ok) {
-          throw new Error('Failed to fetch initial data');
-        }
-
-        const attractionData = await attractionRes.json();
-        setCategories(await categoriesRes.json());
-        setTypes(await typesRes.json());
-        setDistricts(await districtsRes.json());
-        setSects(await sectsRes.json());
+        setCategories(categoriesData);
+        setTypes(typesData);
+        setDistricts(districtsData);
+        setSects(sectsData);
 
         // Populate form with existing data
         setFormData({
@@ -133,26 +125,19 @@ export default function EditAttractionPage() {
         return;
     }
     try {
-      const response = await fetch(`/api/attraction/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            ...formData,
-            lat: formData.lat ? parseFloat(formData.lat) : null,
-            lng: formData.lng ? parseFloat(formData.lng) : null,
-            type_id: formData.type_id ? parseInt(formData.type_id, 10) : null,
-            district_id: formData.district_id ? parseInt(formData.district_id, 10) : null,
-            sect_id: formData.sect_id ? parseInt(formData.sect_id, 10) : null,
-        }),
+      await apiPut(`/api/attraction/${parseInt(id)}`, {
+        attraction_name: formData.attraction_name,
+        type_id: formData.type_id ? parseInt(formData.type_id, 10) : null,
+        district_id: formData.district_id ? parseInt(formData.district_id, 10) : null,
+        sect_id: formData.sect_id ? parseInt(formData.sect_id, 10) : null,
+        lat: formData.lat ? parseFloat(formData.lat) : null,
+        lng: formData.lng ? parseFloat(formData.lng) : null,
+        sacred_obj: formData.sacred_obj || null,
+        offering: formData.offering || null,
+        category_ids: formData.category_ids,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update attraction');
-      }
-
       alert('Attraction updated successfully!');
-      router.push('/admin/attractions');
+      navigate('/admin/attractions');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
     }
@@ -162,7 +147,7 @@ export default function EditAttractionPage() {
   if (error) return <p className="text-center text-red-500 p-8">Error: {error}</p>;
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
       <h1 className="text-2xl font-bold mb-4">Edit Attraction</h1>
 
       <div className="p-6 border rounded-lg shadow-lg bg-white">
@@ -226,7 +211,7 @@ export default function EditAttractionPage() {
           </div>
 
           <div className="md:col-span-3 flex items-center justify-end space-x-4">
-            <button type="button" onClick={() => router.back()} className="bg-gray-200 text-gray-800 px-6 py-3 rounded-md shadow-sm hover:bg-gray-300 font-semibold">
+            <button type="button" onClick={() => navigate(-1)} className="bg-gray-200 text-gray-800 px-6 py-3 rounded-md shadow-sm hover:bg-gray-300 font-semibold">
               Cancel
             </button>
             <button type="submit" className="bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold">

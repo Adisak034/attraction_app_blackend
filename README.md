@@ -1,36 +1,205 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Temple Admin Dashboard
 
-## Getting Started
+A modern temple attractions management system with a React frontend and FastAPI backend. Manage attractions, users, images, ratings, and categories with an intuitive admin interface.
 
-First, run the development server:
+## Architecture
 
+- **Frontend**: React with Next.js & TypeScript (Admin UI) - Port 3000
+- **Backend**: FastAPI Python (RESTful API) - Port 8000
+- **Database**: MySQL with single schema (`appdb.sql`)
+
+## Quick Start
+
+### 1️⃣ Prerequisites
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Required:
+- Node.js 18+
+- Python 3.9+
+- MySQL Server running
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2️⃣ Database Setup
+```bash
+# Create database
+mysql -u root -p -e "CREATE DATABASE appdb;"
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Import schema
+mysql -u root -p appdb < appdb.sql
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3️⃣ Backend (FastAPI)
+```bash
+cd backend
 
-## Learn More
+# Setup Python
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # macOS/Linux
 
-To learn more about Next.js, take a look at the following resources:
+# Install & run
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+```
+✅ Backend: `http://localhost:8000`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4️⃣ Frontend (React)
+```bash
+# From project root
+npm install
+npm run dev
+```
+✅ Frontend: `http://localhost:3000/admin`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Features
 
-## Deploy on Vercel
+### Admin Dashboard
+- 📍 **Attractions** - Create/edit/delete with categories and coordinates
+- 👥 **Users** - Manage admin users and roles
+- 🖼️ **Images** - Upload and link images to attractions
+- ⭐ **Ratings** - View and manage attraction ratings
+- 📑 **Categories** - Browse attraction categories
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## API Endpoints
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Documented at:** `http://localhost:8000/docs`
+
+| Endpoint | Methods | Purpose |
+|----------|---------|---------|
+| `/api/attraction` | GET, POST | List/create attractions |
+| `/api/attraction/{id}` | GET, PUT, DELETE | Attraction details |
+| `/api/users` | GET, POST | List/create users |
+| `/api/users/{id}` | GET, PUT, DELETE | User details |
+| `/api/image` | GET, POST | Manage images |
+| `/api/image/{id}` | GET, PUT, DELETE | Image details |
+| `/api/image/upload` | POST | Upload file |
+| `/api/rating` | GET, POST | Ratings |
+| `/api/rating/{id}` | DELETE | Delete rating |
+| `/api/category` | GET | View categories |
+| `/api/district` | GET | View districts |
+| `/api/type` | GET | View attraction types |
+| `/api/sect` | GET | View Buddhist sects |
+
+## Project Structure
+
+```
+temple_blackend/
+├── src/                         # React Frontend
+│   ├── app/
+│   │   └── admin/              # Admin UI pages
+│   │       ├── attractions/
+│   │       ├── users/
+│   │       ├── images/
+│   │       ├── ratings/
+│   │       └── category/
+│   └── lib/api.ts              # API communication
+├── backend/                     # FastAPI Backend
+│   ├── app/
+│   │   ├── main.py            # FastAPI app & CORS
+│   │   ├── routers/           # API routes
+│   │   ├── schemas/           # Pydantic models
+│   │   └── core/
+│   │       └── database.py    # MySQL connection
+│   ├── requirements.txt
+│   └── .env.example
+├── appdb.sql                   # Database schema
+├── MIGRATION.md                # From Next.js to FastAPI
+└── README.md                   # This file
+```
+
+## Environment Configuration
+
+### Frontend (`.env.local`)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### Backend (`backend/.env`)
+```env
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=appdb
+DB_PORT=3306
+```
+
+## Development Tips
+
+### Change Ports
+```bash
+# Backend (other port)
+python -m uvicorn app.main:app --port 9000
+
+# Frontend (other port)
+npm run dev -- -p 3001
+```
+
+### View Database Tables
+```bash
+mysql appdb -e "SHOW TABLES;"
+mysql appdb -e "DESCRIBE attraction;"
+```
+
+### Debug API Calls
+- Open http://localhost:8000/docs for interactive API explorer
+- Check browser DevTools Network tab for frontend requests
+- Backend logs show in terminal
+
+## Production Deployment
+
+### Frontend
+```bash
+npm run build
+npm start
+```
+
+### Backend
+```bash
+cd backend
+pip install gunicorn
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
+```
+
+## Common Issues
+
+| Issue | Fix |
+|-------|-----|
+| Port already in use | Change port number (see above) |
+| MySQL connection error | Verify MySQL running: `mysql -u root -p` |
+| CORS errors | Backend CORS configured for localhost - adjust in `backend/app/main.py` |
+| Blank frontend | Ensure backend running and check API URL in `.env.local` |
+| Image upload fails | Check `public/uploads/` exists and is writable |
+| Database not found | Run: `mysql appdb -e "SHOW TABLES;"` |
+
+## Database Schema
+
+Tables in `appdb.sql`:
+- `attraction` - Main attractions data
+- `attraction_category` - Many-to-many mapping
+- `attraction_image` - Images for attractions
+- `user` - Admin users
+- `rating` - User ratings
+- `category`, `district`, `type`, `sect` - Lookup tables
+
+## Important Notes
+
+⚠️ **Security (Development Only)**
+- Passwords stored in plaintext - use bcrypt in production
+- No authentication - add middleware for protected routes
+- CORS open to localhost - restrict in production
+
+✅ **Features**
+- Responsive Tailwind UI
+- MySQL connection pooling
+- File upload with validation
+- Transaction support for multi-table operations
+
+## Support & Documentation
+
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Tailwind CSS](https://tailwindcss.com/)
+- See `MIGRATION.md` for detailed migration info from old Next.js API routes
+
+## License
+
+Temple Admin Dashboard Project

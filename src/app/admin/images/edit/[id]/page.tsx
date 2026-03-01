@@ -1,7 +1,6 @@
-'use client';
-
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate, useParams } from 'react-router-dom';
+import { apiGet, apiPut, apiUploadFile } from '@/lib/apiClient';
 
 interface AttractionImage {
   image_id: number;
@@ -14,9 +13,11 @@ interface Attraction {
   attraction_name: string;
 }
 
-export default function EditImagePage({ params }: { params: Promise<{ id: string }> }) {
-  const router = useRouter();
-  const [imageId, setImageId] = useState<string | null>(null);
+export default function EditImagePage() {
+  const navigate = useNavigate();
+  const params = useParams();
+  const imageId = params.id as string;
+  
   const [formData, setFormData] = useState({
     Image_name: '',
     attraction_id: '',
@@ -29,28 +30,16 @@ export default function EditImagePage({ params }: { params: Promise<{ id: string
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    const unlockParams = async () => {
-      const { id } = await params;
-      setImageId(id);
-      fetchData(id);
-    };
-    unlockParams();
-  }, [params]);
+    if (imageId) {
+      fetchData(imageId);
+    }
+  }, [imageId]);
 
   const fetchData = async (id: string) => {
     try {
       setLoading(true);
-      const [imageRes, attractionsRes] = await Promise.all([
-        fetch(`/api/image/${id}`),
-        fetch('/api/attraction'),
-      ]);
-
-      if (!imageRes.ok || !attractionsRes.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
-      const imageData = await imageRes.json();
-      const attractionsData = await attractionsRes.json();
+      const imageData = await apiGet(`/api/image/${parseInt(id)}`);
+      const attractionsData = await apiGet('/api/attraction');
 
       setFormData({
         Image_name: imageData.Image_name || '',
@@ -101,42 +90,17 @@ export default function EditImagePage({ params }: { params: Promise<{ id: string
 
       // If file is selected, upload it first
       if (selectedFile) {
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', selectedFile);
-        uploadFormData.append('attraction_id', formData.attraction_id);
-
-        const uploadRes = await fetch('/api/image/upload', {
-          method: 'POST',
-          body: uploadFormData,
-        });
-
-        if (!uploadRes.ok) {
-          const uploadError = await uploadRes.json();
-          throw new Error(uploadError.message || 'Failed to upload file');
-        }
-
-        const uploadData = await uploadRes.json();
-        imageUrl = uploadData.image_url;
+        const uploadResult = await apiUploadFile('/api/image/upload', selectedFile);
+        imageUrl = uploadResult.image_url;
       }
 
-      const response = await fetch(`/api/image/${imageId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          Image_name: imageUrl,
-          attraction_id: parseInt(formData.attraction_id, 10),
-        }),
+      await apiPut(`/api/image/${parseInt(imageId)}`, {
+        Image_name: imageUrl,
+        attraction_id: parseInt(formData.attraction_id, 10),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update image');
-      }
-
       alert('Image updated successfully!');
-      router.push('/admin/images');
+      navigate('/admin/images');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
@@ -148,7 +112,7 @@ export default function EditImagePage({ params }: { params: Promise<{ id: string
   if (error) return <div className="p-4 text-red-500">{error}</div>;
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
       <h1 className="text-2xl font-bold mb-4">Edit Image</h1>
 
       <div className="p-6 border rounded-lg shadow-lg bg-white">
@@ -233,7 +197,7 @@ export default function EditImagePage({ params }: { params: Promise<{ id: string
             </button>
             <button
               type="button"
-              onClick={() => router.push('/admin/images')}
+              onClick={() => navigate('/admin/images')}
               disabled={uploading}
               className="flex-1 bg-gray-400 text-white px-6 py-3 rounded-md shadow-md hover:bg-gray-500 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
             >

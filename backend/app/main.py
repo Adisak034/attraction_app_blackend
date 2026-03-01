@@ -1,0 +1,65 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
+
+from app.routers import attractions, users, images, ratings, lookup_tables, activity_log
+
+app = FastAPI(
+    title="Temple Admin Backend",
+    description="FastAPI Backend for Temple Attractions Management",
+    version="1.0.0"
+)
+
+# Configure CORS for React frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:3002",
+        "http://127.0.0.1:3003",
+        "http://localhost",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount static files for uploads
+if not os.path.exists("public"):
+    os.makedirs("public")
+if not os.path.exists("public/uploads"):
+    os.makedirs("public/uploads")
+
+app.mount("/uploads", StaticFiles(directory="public/uploads"), name="uploads")
+
+# Include routers
+app.include_router(attractions.router)
+app.include_router(users.router)
+app.include_router(images.router)
+app.include_router(ratings.router)
+app.include_router(lookup_tables.router)
+app.include_router(activity_log.router)
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "ok", "message": "Backend is running"}
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "Temple Admin Backend API",
+        "docs": "/docs",
+        "version": "1.0.0"
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

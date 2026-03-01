@@ -1,49 +1,40 @@
-'use client';
-
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate, useParams } from 'react-router-dom';
+import { apiGet, apiPut } from '@/lib/apiClient';
 
 interface User {
   user_id: number;
   user_name: string;
   password: string;
-  birth_date: string | null;
   role: string | null;
 }
 
-export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
-  const router = useRouter();
-  const [userId, setUserId] = useState<string | null>(null);
+export default function EditUserPage() {
+  const navigate = useNavigate();
+  const params = useParams();
+  const userId = params.id as string;
+  
   const [formData, setFormData] = useState<Partial<User>>({
     user_name: '',
     password: '',
-    birth_date: '',
     role: '',
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unlockParams = async () => {
-      const { id } = await params;
-      setUserId(id);
-      fetchUser(id);
-    };
-    unlockParams();
-  }, [params]);
+    if (userId) {
+      fetchUser(userId);
+    }
+  }, [userId]);
 
   const fetchUser = async (id: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/users/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch user');
-      }
-      const data = await response.json();
+      const data = await apiGet(`/api/users/${parseInt(id)}`);
       setFormData({
         user_name: data.user_name || '',
         password: data.password || '',
-        birth_date: data.birth_date ? data.birth_date.split('T')[0] : '',
         role: data.role || '',
       });
     } catch (err) {
@@ -53,7 +44,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -68,26 +59,13 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_name: formData.user_name,
-          password: formData.password,
-          birth_date: formData.birth_date || null,
-          role: formData.role || null,
-        }),
+      await apiPut(`/api/users/${parseInt(userId)}`, {
+        user_name: formData.user_name,
+        password: formData.password,
+        role: formData.role || null,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user');
-      }
-
       alert('User updated successfully!');
-      router.push('/admin/users');
+      navigate('/admin/users');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
     }
@@ -97,7 +75,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
   if (error) return <div className="p-4 text-red-500">{error}</div>;
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
       <h1 className="text-2xl font-bold mb-4">Edit User</h1>
 
       <div className="p-6 border rounded-lg shadow-lg bg-white">
@@ -133,32 +111,20 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
           </div>
 
           <div className="md:col-span-1">
-            <label htmlFor="birth_date" className="block text-sm font-medium text-gray-700 mb-1">
-              Birth Date
-            </label>
-            <input
-              type="date"
-              id="birth_date"
-              name="birth_date"
-              value={formData.birth_date || ''}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-md shadow-sm"
-            />
-          </div>
-
-          <div className="md:col-span-1">
             <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
               Role
             </label>
-            <input
-              type="text"
+            <select
               id="role"
               name="role"
               value={formData.role || ''}
               onChange={handleInputChange}
-              placeholder="e.g., user, admin"
               className="w-full p-2 border rounded-md shadow-sm"
-            />
+            >
+              <option value="">Select Role</option>
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
 
           <div className="md:col-span-2 flex gap-4">
@@ -170,7 +136,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
             </button>
             <button
               type="button"
-              onClick={() => router.push('/admin/users')}
+              onClick={() => navigate('/admin/users')}
               className="flex-1 bg-gray-400 text-white px-6 py-3 rounded-md shadow-md hover:bg-gray-500 font-semibold"
             >
               Cancel

@@ -1,17 +1,26 @@
-'use client';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import DataTable from 'datatables.net-dt';
+import 'datatables.net-dt/css/dataTables.dataTables.css';
+import { apiGet, apiDelete } from '@/lib/apiClient';
 
-import { useState, useEffect } from 'react';
-
-// Interface based on the GET API response
+// Interface based on the database schema
 interface Rating {
   rating_id: number;
-  rating: number;
+  rating_work: number;
+  rating_finance: number;
+  rating_love: number;
   created_at: string;
   user_name: string;
   attraction_name: string;
 }
 
 export default function RatingAdminPage() {
+  const navigate = useNavigate();
+  const tableRef = useRef<HTMLTableElement>(null);
+  const dataTableRef = useRef<any>(null);
+
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,11 +28,7 @@ export default function RatingAdminPage() {
   const fetchRatings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/rating');
-      if (!response.ok) {
-        throw new Error('Failed to fetch ratings');
-      }
-      const data = await response.json();
+      const data: Rating[] = await apiGet('/api/rating');
       setRatings(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -36,70 +41,133 @@ export default function RatingAdminPage() {
     fetchRatings();
   }, []);
 
-  const handleDelete = async (ratingId: number) => {
-    if (!confirm('Are you sure you want to delete this rating?')) {
+  useEffect(() => {
+    if (loading) return;
+    if (!tableRef.current) return;
+
+    if (dataTableRef.current) {
+      dataTableRef.current.destroy();
+      dataTableRef.current = null;
+    }
+
+    if (ratings.length === 0) return;
+
+    dataTableRef.current = new DataTable(tableRef.current, {
+      pageLength: 10,
+      lengthMenu: [5, 10, 20, 50],
+      searching: true,
+      ordering: true,
+      paging: true,
+      info: true,
+      dom: 'lrtip',
+    });
+
+    return () => {
+      if (dataTableRef.current) {
+        dataTableRef.current.destroy();
+        dataTableRef.current = null;
+      }
+    };
+  }, [loading, ratings]);
+
+  const handleDelete = async (ratingId: number, userName: string, attractionName: string) => {
+    if (!confirm(`Delete rating from "${userName}" for "${attractionName}"?`)) {
       return;
     }
     try {
-      const response = await fetch(`/api/rating/${ratingId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete rating');
-      }
-
-      fetchRatings(); // Refresh the list
+      await apiDelete(`/api/rating/${ratingId}`);
+      fetchRatings();
       alert('Rating deleted successfully!');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+      alert(err instanceof Error ? err.message : 'Error deleting rating');
     }
   };
 
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Rating Management</h1>
+  useEffect(() => {
+    const tableElement = tableRef.current;
+    if (!tableElement) return;
 
-      <div className="p-4 border rounded-lg shadow-md bg-white">
-        <h2 className="text-xl font-semibold mb-2">All Ratings</h2>
-        {loading && <p>Loading...</p>}
-        {error && <p className="text-red-500">{error}</p>}
-        {!loading && !error && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">ID</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Attraction</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">User</th>
-                  <th className="py-3 px-4 border-b text-center text-sm font-semibold text-gray-600">Rating</th>
-                  <th className="py-3 px-4 border-b text-left text-sm font-semibold text-gray-600">Date</th>
-                  <th className="py-3 px-4 border-b text-center text-sm font-semibold text-gray-600">Actions</th>
+    const handleTableClick = (event: Event) => {
+      const target = event.target as HTMLElement;
+      const button = target.closest('.delete-rating-btn') as HTMLButtonElement | null;
+      if (!button) return;
+
+      const ratingId = Number(button.dataset.ratingId);
+      const userName = button.dataset.userName || 'Unknown';
+      const attractionName = button.dataset.attractionName || 'Unknown';
+
+      if (!Number.isFinite(ratingId)) return;
+      handleDelete(ratingId, userName, attractionName);
+    };
+
+    tableElement.addEventListener('click', handleTableClick);
+    return () => tableElement.removeEventListener('click', handleTableClick);
+  }, [ratings]);
+
+  return (
+    <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin')}
+            aria-label="ย้อนกลับ"
+            title="ย้อนกลับ"
+            className="h-10 w-10 flex items-center justify-center border rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">Rating Management</h1>
+        </div>
+      </div>
+
+      {/* Table Section */}
+      <div className="border rounded-lg shadow-md bg-white overflow-hidden">
+        <div className="p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-800">Ratings</h2>
+        </div>
+        <div className="overflow-x-auto">
+          {error && <p className="text-red-600 bg-red-50 p-4 m-4 rounded-md">{error}</p>}
+          {loading && <p className="text-gray-600 text-center py-8">Loading ratings...</p>}
+          <table ref={tableRef} className="w-full display compact hover stripe">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Attraction</th>
+                <th>User</th>
+                <th>Work</th>
+                <th>Finance</th>
+                <th>Love</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ratings.map((rating) => (
+                <tr key={rating.rating_id} data-id={rating.rating_id}>
+                  <td>{rating.rating_id}</td>
+                  <td>{rating.attraction_name}</td>
+                  <td>{rating.user_name}</td>
+                  <td><span className="text-blue-600 font-bold text-lg">{rating.rating_work > 0 ? `${rating.rating_work}★` : '-'}</span></td>
+                  <td><span className="text-green-600 font-bold text-lg">{rating.rating_finance > 0 ? `${rating.rating_finance}★` : '-'}</span></td>
+                  <td><span className="text-red-600 font-bold text-lg">{rating.rating_love > 0 ? `${rating.rating_love}★` : '-'}</span></td>
+                  <td>{new Date(rating.created_at).toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="delete-rating-btn bg-red-600 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
+                      data-rating-id={rating.rating_id}
+                      data-user-name={rating.user_name}
+                      data-attraction-name={rating.attraction_name}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {ratings.map((rating) => (
-                  <tr key={rating.rating_id} className="hover:bg-gray-50">
-                    <td className="py-2 px-4 border-b text-sm font-medium text-gray-500">{rating.rating_id}</td>
-                    <td className="py-2 px-4 border-b text-sm">{rating.attraction_name}</td>
-                    <td className="py-2 px-4 border-b text-sm">{rating.user_name}</td>
-                    <td className="py-2 px-4 border-b text-sm text-center text-yellow-500 font-semibold">{rating.rating} ★</td>
-                    <td className="py-2 px-4 border-b text-sm">{new Date(rating.created_at).toLocaleString()}</td>
-                    <td className="py-2 px-4 border-b text-sm text-center">
-                      <button
-                        onClick={() => handleDelete(rating.rating_id)}
-                        className="bg-red-500 text-white px-4 py-1 rounded text-xs font-medium hover:bg-red-600 w-full"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

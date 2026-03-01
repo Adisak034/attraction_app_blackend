@@ -1,87 +1,83 @@
-'use client';
-
-import Link from 'next/link';
-import { ShieldCheck, Users, Map, ImageIcon, Star, BarChart3, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-
-const adminSections = [
-  {
-    name: 'Attractions',
-    href: '/admin/attractions',
-    description: 'Manage attractions and their categories.',
-    icon: Map,
-  },
-  {
-    name: 'Users',
-    href: '/admin/users',
-    description: 'View and manage user accounts.',
-    icon: Users,
-  },
-  {
-    name: 'Images',
-    href: '/admin/images',
-    description: 'Add or remove attraction images.',
-    icon: ImageIcon,
-  },
-  {
-    name: 'Ratings',
-    href: '/admin/ratings',
-    description: 'View and moderate user ratings.',
-    icon: Star,
-  },
-];
+import { useNavigate } from 'react-router-dom';
+import { MapIcon, Users, ImageIcon, Star, Activity, BarChart3 } from 'lucide-react';
+import { apiGet } from '@/lib/apiClient';
 
 interface Stats {
-    attractions: number;
-    users: number;
-    ratings: number;
-    categories: number;
+  total_attractions: number;
+  total_users: number;
+  total_images: number;
+  total_ratings: number;
+  rating_work_avg: number;
+  rating_finance_avg: number;
+  rating_love_avg: number;
 }
 
-const StatCard = ({ title, value, icon: Icon }: { title: string, value: number, icon: React.ElementType }) => (
-    <div className="bg-white p-4 rounded-lg shadow-md flex items-center">
-        <div className="p-3 bg-blue-100 rounded-full mr-4">
-            <Icon className="h-6 w-6 text-blue-600" />
-        </div>
-        <div>
-            <p className="text-sm text-gray-500">{title}</p>
-            <p className="text-2xl font-bold text-gray-800">{value}</p>
-        </div>
-    </div>
-);
+interface RatingData {
+  rating_id: number;
+  rating_work: number;
+  rating_finance: number;
+  rating_love: number;
+}
 
+interface AttractionCategory {
+  category_name: string;
+  count: number;
+}
 
-export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
+export default function AdminPage() {
+  const navigate = useNavigate();
+  const [stats, setStats] = useState<Stats>({
+    total_attractions: 0,
+    total_users: 0,
+    total_images: 0,
+    total_ratings: 0,
+    rating_work_avg: 0,
+    rating_finance_avg: 0,
+    rating_love_avg: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [attractionsRes, usersRes, ratingsRes, categoriesRes] = await Promise.all([
-          fetch('/api/attraction'),
-          fetch('/api/users'),
-          fetch('/api/rating'),
-          fetch('/api/category'),
+        // Fetch data from all endpoints to calculate statistics
+        const [attractions, users, ratings] = await Promise.all([
+          apiGet('/api/attraction'),
+          apiGet('/api/users'),
+          apiGet('/api/rating'),
         ]);
 
-        if (!attractionsRes.ok || !usersRes.ok || !ratingsRes.ok || !categoriesRes.ok) {
-          throw new Error('Failed to fetch stats');
+        // Calculate statistics
+        let total_attractions = attractions.length || 0;
+        let total_users = users.length || 0;
+        let total_ratings = ratings.length || 0;
+        
+        // Count images (from attraction_image field)
+        const total_images = attractions.filter((a: any) => a.attraction_image).length || 0;
+
+        // Calculate average ratings
+        let avg_work = 0, avg_finance = 0, avg_love = 0;
+        if (total_ratings > 0) {
+          const sum_work = ratings.reduce((acc: number, r: any) => acc + (r.rating_work || 0), 0);
+          const sum_finance = ratings.reduce((acc: number, r: any) => acc + (r.rating_finance || 0), 0);
+          const sum_love = ratings.reduce((acc: number, r: any) => acc + (r.rating_love || 0), 0);
+          avg_work = parseFloat((sum_work / total_ratings).toFixed(2));
+          avg_finance = parseFloat((sum_finance / total_ratings).toFixed(2));
+          avg_love = parseFloat((sum_love / total_ratings).toFixed(2));
         }
 
-        const attractions = await attractionsRes.json();
-        const users = await usersRes.json();
-        const ratings = await ratingsRes.json();
-        const categories = await categoriesRes.json();
-
         setStats({
-          attractions: attractions.length,
-          users: users.length,
-          ratings: ratings.length,
-          categories: categories.length,
+          total_attractions,
+          total_users,
+          total_images,
+          total_ratings,
+          rating_work_avg: avg_work,
+          rating_finance_avg: avg_finance,
+          rating_love_avg: avg_love,
         });
-      } catch (error) {
-        console.error(error);
+      } catch (err) {
+        console.error('Failed to fetch statistics:', err);
       } finally {
         setLoading(false);
       }
@@ -90,63 +86,150 @@ export default function AdminDashboardPage() {
     fetchStats();
   }, []);
 
+  const managementSections = [
+    { title: 'Attractions', href: '/admin/attractions', icon: MapIcon, color: 'bg-blue-50', textColor: 'text-blue-600' },
+    { title: 'Users', href: '/admin/users', icon: Users, color: 'bg-green-50', textColor: 'text-green-600' },
+    { title: 'Images', href: '/admin/images', icon: ImageIcon, color: 'bg-purple-50', textColor: 'text-purple-600' },
+    { title: 'Ratings', href: '/admin/ratings', icon: Star, color: 'bg-yellow-50', textColor: 'text-yellow-600' },
+    { title: 'User Log', href: '/admin/activity-logs', icon: Activity, color: 'bg-indigo-50', textColor: 'text-indigo-600' },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="flex items-center mb-6">
-          <ShieldCheck className="h-8 w-8 text-blue-600 mr-3" />
-          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-        </div>
-        
-        {/* Stats Section */}
-        <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
-                <BarChart3 className="h-6 w-6 mr-2" />
-                Site Statistics
-            </h2>
-            {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Loading Skeleton */}
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="bg-white p-4 rounded-lg shadow-md flex items-center animate-pulse">
-                            <div className="p-3 bg-gray-200 rounded-full mr-4 h-12 w-12"></div>
-                            <div className="flex-1">
-                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                                <div className="h-6 bg-gray-300 rounded w-1/2"></div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : stats && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard title="Total Attractions" value={stats.attractions} icon={Map} />
-                    <StatCard title="Total Users" value={stats.users} icon={Users} />
-                    <StatCard title="Total Ratings" value={stats.ratings} icon={Star} />
-                    <StatCard title="Total Categories" value={stats.categories} icon={ImageIcon} />
-                </div>
-            )}
-        </div>
+    <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
+      {/* Header */}
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
 
-
-        <p className="text-gray-600 mb-8">
-          Welcome to the admin panel. From here you can manage all aspects of the application data.
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {adminSections.map((section) => (
-            <Link href={section.href} key={section.name}>
-              <div className="group bg-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-gray-200">
-                <div className="flex items-center mb-3">
-                  <section.icon className="h-6 w-6 text-blue-500 group-hover:text-blue-600 transition-colors" />
-                  <h2 className="text-xl font-semibold text-gray-800 ml-3">{section.name}</h2>
-                </div>
-                <p className="text-gray-600">{section.description}</p>
+      {/* Site Statistics Section */}
+      <section className="mb-12">
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">Site Statistics</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Stat Card 1: Attractions */}
+          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Total Attractions</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total_attractions}</p>
               </div>
-            </Link>
-          ))}
+              <MapIcon className="w-12 h-12 text-blue-500 opacity-20" />
+            </div>
+          </div>
+
+          {/* Stat Card 2: Users */}
+          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Total Users</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total_users}</p>
+              </div>
+              <Users className="w-12 h-12 text-green-500 opacity-20" />
+            </div>
+          </div>
+
+          {/* Stat Card 3: Images */}
+          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Total Images</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total_images}</p>
+              </div>
+              <ImageIcon className="w-12 h-12 text-purple-500 opacity-20" />
+            </div>
+          </div>
+
+          {/* Stat Card 4: Ratings */}
+          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Total Ratings</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total_ratings}</p>
+              </div>
+              <Star className="w-12 h-12 text-yellow-500 opacity-20" />
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Charts Section */}
+      <section className="mb-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Rating Distribution */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold text-gray-800 mb-6">Rating Distribution</h3>
+          <div className="space-y-4">
+            {/* Work Ratings */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Work Rating</span>
+                <span className="text-sm font-semibold text-blue-600">{stats.rating_work_avg.toFixed(1)} ★</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all"
+                  style={{ width: `${(stats.rating_work_avg / 5) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Finance Ratings */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Finance Rating</span>
+                <span className="text-sm font-semibold text-green-600">{stats.rating_finance_avg.toFixed(1)} ★</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-green-500 h-2 rounded-full transition-all"
+                  style={{ width: `${(stats.rating_finance_avg / 5) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Love Ratings */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Love Rating</span>
+                <span className="text-sm font-semibold text-red-600">{stats.rating_love_avg.toFixed(1)} ★</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-red-500 h-2 rounded-full transition-all"
+                  style={{ width: `${(stats.rating_love_avg / 5) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Placeholder for Attractions by Category */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold text-gray-800 mb-6">Attractions by Category</h3>
+          <div className="flex items-center justify-center h-40 bg-gray-100 rounded text-gray-500">
+            <p>Chart visualization</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Management Sections */}
+      <section>
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">Management Sections</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {managementSections.map((section) => {
+            const Icon = section.icon;
+            return (
+              <button
+                key={section.title}
+                onClick={() => navigate(section.href)}
+                className={`${section.color} p-6 rounded-lg hover:shadow-lg transition-shadow duration-200 text-left`}
+              >
+                <div className="flex items-center mb-4">
+                  <Icon className={`${section.textColor} w-8 h-8`} />
+                </div>
+                <h3 className={`text-lg font-semibold ${section.textColor} mb-2`}>{section.title}</h3>
+                <p className="text-gray-600 text-sm">Manage {section.title.toLowerCase()}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

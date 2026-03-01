@@ -1,26 +1,28 @@
-'use client';
-
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import DataTable from 'datatables.net-dt';
+import 'datatables.net-dt/css/dataTables.dataTables.css';
+import { apiGet } from '@/lib/apiClient';
 
 interface Category {
-  id: number;
-  name: string;
+  category_id: number;
+  category_name: string;
 }
 
 export default function CategoryAdminPage() {
+  const navigate = useNavigate();
+  const tableRef = useRef<HTMLTableElement>(null);
+  const dataTableRef = useRef<any>(null);
+
   const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryName, setCategoryName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/category');
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
-      const data = await response.json();
+      const data: Category[] = await apiGet('/api/category');
       setCategories(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -33,65 +35,77 @@ export default function CategoryAdminPage() {
     fetchCategories();
   }, []);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!categoryName.trim()) {
-      alert('Category name cannot be empty');
-      return;
-    }
-    try {
-      const response = await fetch('/api/category', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: categoryName }),
-      });
+  useEffect(() => {
+    if (loading) return;
+    if (!tableRef.current) return;
 
-      if (!response.ok) {
-        throw new Error('Failed to create category');
+    if (dataTableRef.current) {
+      dataTableRef.current.destroy();
+      dataTableRef.current = null;
+    }
+
+    if (categories.length === 0) return;
+
+    dataTableRef.current = new DataTable(tableRef.current, {
+      pageLength: 10,
+      lengthMenu: [5, 10, 20, 50],
+      searching: true,
+      ordering: true,
+      paging: true,
+      info: true,
+      dom: 'lrtip',
+    });
+
+    return () => {
+      if (dataTableRef.current) {
+        dataTableRef.current.destroy();
+        dataTableRef.current = null;
       }
-
-      setCategoryName('');
-      fetchCategories(); // Refresh the list
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
-    }
-  };
+    };
+  }, [loading, categories]);
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Category Management</h1>
-
-      <div className="mb-6 p-4 border rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-2">Add New Category</h2>
-        <form onSubmit={handleSubmit} className="flex gap-4">
-          <input
-            type="text"
-            value={categoryName}
-            onChange={(e) => setCategoryName(e.target.value)}
-            placeholder="Enter category name"
-            className="flex-grow p-2 border rounded"
-          />
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-            Add Category
+    <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin')}
+            aria-label="ย้อนกลับ"
+            title="ย้อนกลับ"
+            className="h-10 w-10 flex items-center justify-center border rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft size={18} />
           </button>
-        </form>
+          <h1 className="text-3xl font-bold text-gray-900">Category Management</h1>
+        </div>
       </div>
 
-      <div className="p-4 border rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-2">Existing Categories</h2>
-        {loading && <p>Loading...</p>}
-        {error && <p className="text-red-500">{error}</p>}
-        {!loading && !error && (
-          <ul className="space-y-2">
-            {categories.map((category) => (
-              <li key={category.id} className="p-2 border-b">
-                {category.name}
-              </li>
-            ))}
-          </ul>
-        )}
+      {/* Table Section */}
+      <div className="border rounded-lg shadow-md bg-white overflow-hidden">
+        <div className="p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-800">Categories</h2>
+        </div>
+        {error && <p className="text-red-500 p-6">{error}</p>}
+        {loading && <p className="text-gray-500 p-6">Loading...</p>}
+        <div className="overflow-x-auto">
+          <table ref={tableRef} className="w-full display compact hover stripe">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Category Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((cat) => (
+                <tr key={cat.category_id}>
+                  <td>{cat.category_id}</td>
+                  <td>{cat.category_name}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
