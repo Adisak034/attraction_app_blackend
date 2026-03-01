@@ -25,6 +25,13 @@ interface AttractionCategory {
   count: number;
 }
 
+interface AttractionRow {
+  attraction_id: number;
+  attraction_name: string;
+  attraction_image?: string | null;
+  categories?: string | null;
+}
+
 export default function AdminPage() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({
@@ -37,6 +44,7 @@ export default function AdminPage() {
     rating_love_avg: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [categoryStats, setCategoryStats] = useState<AttractionCategory[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -48,13 +56,40 @@ export default function AdminPage() {
           apiGet('/api/rating'),
         ]);
 
+        const attractionRows: AttractionRow[] = Array.isArray(attractions) ? attractions : [];
+
         // Calculate statistics
-        let total_attractions = attractions.length || 0;
+        let total_attractions = attractionRows.length || 0;
         let total_users = users.length || 0;
         let total_ratings = ratings.length || 0;
         
         // Count images (from attraction_image field)
-        const total_images = attractions.filter((a: any) => a.attraction_image).length || 0;
+        const total_images = attractionRows.filter((a) => a.attraction_image).length || 0;
+
+        // Calculate attractions by category
+        const categoryMap = new Map<string, number>();
+        attractionRows.forEach((row) => {
+          const rawCategories = row.categories || '';
+          const parts = rawCategories
+            .split(',')
+            .map((name) => name.trim())
+            .filter(Boolean);
+
+          if (parts.length === 0) {
+            categoryMap.set('Uncategorized', (categoryMap.get('Uncategorized') || 0) + 1);
+            return;
+          }
+
+          parts.forEach((categoryName) => {
+            categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + 1);
+          });
+        });
+
+        const sortedCategoryStats: AttractionCategory[] = Array.from(categoryMap.entries())
+          .map(([category_name, count]) => ({ category_name, count }))
+          .sort((a, b) => b.count - a.count);
+
+        setCategoryStats(sortedCategoryStats);
 
         // Calculate average ratings
         let avg_work = 0, avg_finance = 0, avg_love = 0;
@@ -199,12 +234,39 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Placeholder for Attractions by Category */}
+        {/* Attractions by Category */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-lg font-semibold text-gray-800 mb-6">Attractions by Category</h3>
-          <div className="flex items-center justify-center h-40 bg-gray-100 rounded text-gray-500">
-            <p>Chart visualization</p>
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center h-40 bg-gray-100 rounded text-gray-500">
+              <p>Loading chart...</p>
+            </div>
+          ) : categoryStats.length === 0 ? (
+            <div className="flex items-center justify-center h-40 bg-gray-100 rounded text-gray-500">
+              <p>No category data</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {categoryStats.slice(0, 8).map((item) => {
+                const maxCount = Math.max(...categoryStats.map((x) => x.count), 1);
+                const widthPercent = (item.count / maxCount) * 100;
+                return (
+                  <div key={item.category_name}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-700 truncate pr-3">{item.category_name}</span>
+                      <span className="text-sm font-semibold text-indigo-600">{item.count}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-indigo-500 h-2 rounded-full transition-all"
+                        style={{ width: `${widthPercent}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 

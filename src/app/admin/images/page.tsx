@@ -16,6 +16,15 @@ interface Attraction {
   attraction_name: string;
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+
+const resolveImageUrl = (url: string | null | undefined) => {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url) || url.startsWith('data:')) return url;
+  if (url.startsWith('/')) return `${API_BASE_URL}${url}`;
+  return `${API_BASE_URL}/${url}`;
+};
+
 const initialFormState = {
   attraction_image: '',
   attraction_id: '',
@@ -35,10 +44,20 @@ export default function ImageAdminPage() {
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const initialLoadDoneRef = useRef(false);
 
-  const fetchData = async () => {
+  const closeAddModal = () => {
+    setShowForm(false);
+    setFormData(initialFormState);
+    setSelectedFile(null);
+    setFilePreview(null);
+  };
+
+  const fetchData = async (showLoading = false) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const imageData: Array<{ attraction_id: number; attraction_image: string }> = await apiGet('/api/image');
       const attractionData: Attraction[] = await apiGet('/api/attraction');
 
@@ -58,12 +77,15 @@ export default function ImageAdminPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
-      setLoading(false);
+      if (showLoading || !initialLoadDoneRef.current) {
+        setLoading(false);
+        initialLoadDoneRef.current = true;
+      }
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, []);
 
   useEffect(() => {
@@ -138,11 +160,8 @@ export default function ImageAdminPage() {
         attraction_id: parseInt(formData.attraction_id, 10),
       });
 
-      setFormData(initialFormState);
-      setSelectedFile(null);
-      setFilePreview(null);
-      fetchData();
-      alert('Image added successfully!');
+      closeAddModal();
+      await fetchData(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
@@ -157,8 +176,8 @@ export default function ImageAdminPage() {
 
     try {
       await apiDelete(`/api/image/${attractionId}`);
-      fetchData();
-      alert('Image deleted successfully!');
+      setImages((prev) => prev.filter((item) => item.attraction_id !== attractionId));
+      await fetchData(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error deleting image');
     }
@@ -210,8 +229,11 @@ export default function ImageAdminPage() {
         </div>
         <button
           onClick={() => {
-            setShowForm(!showForm);
-            setFormData(initialFormState);
+            setShowForm(true);
+            setFormData({
+              ...initialFormState,
+              attraction_id: attractions.length > 0 ? String(attractions[0].attraction_id) : '',
+            });
             setSelectedFile(null);
             setFilePreview(null);
           }}
@@ -226,7 +248,7 @@ export default function ImageAdminPage() {
           <div className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">Add New Image</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <button onClick={closeAddModal} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -292,7 +314,7 @@ export default function ImageAdminPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={closeAddModal}
                   className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold"
                 >
                   Cancel
@@ -327,14 +349,14 @@ export default function ImageAdminPage() {
                   <td>{item.attraction_name}</td>
                   <td>
                     {item.attraction_image ? (
-                      <img src={item.attraction_image} alt="preview" className="w-[100px] h-[80px] object-cover rounded border border-gray-200" />
+                      <img src={resolveImageUrl(item.attraction_image)} alt="preview" className="w-[100px] h-[80px] object-cover rounded border border-gray-200" />
                     ) : (
                       <span className="text-gray-400">No image</span>
                     )}
                   </td>
                   <td>
                     {item.attraction_image ? (
-                      <a href={item.attraction_image} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline text-sm">
+                      <a href={resolveImageUrl(item.attraction_image)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline text-sm">
                         {item.attraction_image.length > 40 ? `${item.attraction_image.slice(0, 40)}...` : item.attraction_image}
                       </a>
                     ) : (

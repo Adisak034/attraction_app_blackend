@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPut, apiUploadFile } from '@/lib/apiClient';
 
 interface AttractionImage {
-  image_id: number;
-  Image_name: string;
+  Image_name?: string;
+  attraction_image?: string;
   attraction_id: number;
 }
 
@@ -12,6 +12,18 @@ interface Attraction {
   attraction_id: number;
   attraction_name: string;
 }
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+
+const resolveImageUrl = (url: string | null | undefined) => {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url) || url.startsWith('data:')) return url;
+  if (url.startsWith('/')) return `${API_BASE_URL}${url}`;
+  return `${API_BASE_URL}/${url}`;
+};
+
+const IMAGE_FALLBACK_SRC =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%236b7280" font-family="Arial, sans-serif" font-size="24">Image not found</text></svg>';
 
 export default function EditImagePage() {
   const navigate = useNavigate();
@@ -38,11 +50,12 @@ export default function EditImagePage() {
   const fetchData = async (id: string) => {
     try {
       setLoading(true);
-      const imageData = await apiGet(`/api/image/${parseInt(id)}`);
+      const imageData: AttractionImage = await apiGet(`/api/image/${parseInt(id)}`);
       const attractionsData = await apiGet('/api/attraction');
+      const imageName = imageData.Image_name || imageData.attraction_image || '';
 
       setFormData({
-        Image_name: imageData.Image_name || '',
+        Image_name: imageName,
         attraction_id: String(imageData.attraction_id || ''),
       });
       setAttractions(attractionsData);
@@ -100,7 +113,7 @@ export default function EditImagePage() {
       });
 
       alert('Image updated successfully!');
-      navigate('/admin/images');
+      navigate('/admin/images', { replace: true });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
@@ -177,11 +190,12 @@ export default function EditImagePage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Current/New Preview</label>
             <img
-              src={filePreview || formData.Image_name}
+              src={filePreview || resolveImageUrl(formData.Image_name)}
               alt="Preview"
               className="max-w-full h-auto max-h-64 rounded border"
               onError={(e) => {
-                e.currentTarget.src = 'https://via.placeholder.com/300';
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = IMAGE_FALLBACK_SRC;
                 e.currentTarget.alt = 'Image not found';
               }}
             />
@@ -197,7 +211,7 @@ export default function EditImagePage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/admin/images')}
+              onClick={() => navigate('/admin/images', { replace: true })}
               disabled={uploading}
               className="flex-1 bg-gray-400 text-white px-6 py-3 rounded-md shadow-md hover:bg-gray-500 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
             >

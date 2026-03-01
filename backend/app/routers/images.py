@@ -126,14 +126,24 @@ async def delete_image(id: int):
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
-        
+
+        cursor.execute(
+            "SELECT attraction_id, attraction_image FROM attraction WHERE attraction_id = %s",
+            (id,),
+        )
+        attraction = cursor.fetchone()
+        if not attraction:
+            raise HTTPException(status_code=404, detail="Attraction not found")
+
         cursor.execute("UPDATE attraction SET attraction_image = NULL WHERE attraction_id = %s", (id,))
-        if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Image record not found")
 
         connection.commit()
-        
-        return {"message": "Image deleted successfully"}
+
+        return {
+            "message": "Image deleted successfully",
+            "attraction_id": id,
+            "already_empty": attraction.get("attraction_image") in (None, ""),
+        }
 
     except HTTPException as e:
         raise e

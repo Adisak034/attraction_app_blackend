@@ -69,6 +69,11 @@ export default function AttractionAdminPage() {
   const [showForm, setShowForm] = useState(false);
   const navigate = useNavigate();
 
+  const closeAddModal = () => {
+    setShowForm(false);
+    setFormData(initialFormState);
+  };
+
   // Fetch all necessary data for the page
   const fetchData = async () => {
     try {
@@ -177,8 +182,9 @@ export default function AttractionAdminPage() {
         sect_id: formData.sect_id ? parseInt(formData.sect_id, 10) : null,
       });
 
-      setFormData(initialFormState); // Reset form
-      fetchData(); // Refresh data
+      closeAddModal();
+      await fetchData();
+      navigate('/admin/attractions', { replace: true });
       alert('Attraction created successfully!');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -245,7 +251,7 @@ export default function AttractionAdminPage() {
         </div>
         <button
           onClick={() => {
-            setShowForm(!showForm);
+            setShowForm(true);
             setFormData(initialFormState);
           }}
           className="bg-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-blue-700 font-semibold"
@@ -260,7 +266,7 @@ export default function AttractionAdminPage() {
           <div className="w-full max-w-6xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">Add New Attraction</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <button onClick={closeAddModal} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Main Details */}
@@ -330,7 +336,7 @@ export default function AttractionAdminPage() {
                 <button type="submit" className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold">
                   Add Attraction
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold">
+                <button type="button" onClick={closeAddModal} className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold">
                   Cancel
                 </button>
               </div>
@@ -343,12 +349,6 @@ export default function AttractionAdminPage() {
       <div className="border rounded-lg shadow-md bg-white overflow-hidden">
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Attractions</h2>
-          <div className="flex gap-4">
-            <div className="relative">
-              <input type="text" placeholder="Search..." className="px-4 py-2 border rounded-md text-sm w-64" />
-              <svg className="absolute right-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            </div>
-          </div>
         </div>
         {error && <p className="text-red-500 mb-4 p-6">{error}</p>}
         {loading && <p className="text-gray-500 p-6">Loading...</p>}

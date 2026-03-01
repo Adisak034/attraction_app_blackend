@@ -137,7 +137,7 @@ export default function EditAttractionPage() {
         category_ids: formData.category_ids,
       });
       alert('Attraction updated successfully!');
-      navigate('/admin/attractions');
+      navigate('/admin/attractions', { replace: true });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
     }
@@ -211,7 +211,7 @@ export default function EditAttractionPage() {
           </div>
 
           <div className="md:col-span-3 flex items-center justify-end space-x-4">
-            <button type="button" onClick={() => navigate(-1)} className="bg-gray-200 text-gray-800 px-6 py-3 rounded-md shadow-sm hover:bg-gray-300 font-semibold">
+            <button type="button" onClick={() => navigate('/admin/attractions', { replace: true })} className="bg-gray-200 text-gray-800 px-6 py-3 rounded-md shadow-sm hover:bg-gray-300 font-semibold">
               Cancel
             </button>
             <button type="submit" className="bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold">

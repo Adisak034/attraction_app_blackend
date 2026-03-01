@@ -65,7 +65,7 @@ export default function EditUserPage() {
         role: formData.role || null,
       });
       alert('User updated successfully!');
-      navigate('/admin/users');
+      navigate('/admin/users', { replace: true });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
     }
@@ -136,7 +136,7 @@ export default function EditUserPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/admin/users')}
+              onClick={() => navigate('/admin/users', { replace: true })}
               className="flex-1 bg-gray-400 text-white px-6 py-3 rounded-md shadow-md hover:bg-gray-500 font-semibold"
             >
               Cancel

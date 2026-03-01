@@ -29,6 +29,11 @@ export default function UserAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
+  const closeAddModal = () => {
+    setShowForm(false);
+    setFormData(initialFormState);
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -92,8 +97,9 @@ export default function UserAdminPage() {
         role: formData.role,
       });
 
-      setFormData(initialFormState);
-      fetchUsers();
+      closeAddModal();
+      await fetchUsers();
+      navigate('/admin/users', { replace: true });
       alert('User created successfully!');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -160,7 +166,7 @@ export default function UserAdminPage() {
         </div>
         <button
           onClick={() => {
-            setShowForm(!showForm);
+            setShowForm(true);
             setFormData(initialFormState);
           }}
           className="bg-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-blue-700 font-semibold"
@@ -175,7 +181,7 @@ export default function UserAdminPage() {
           <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Add New User</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <button onClick={closeAddModal} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
@@ -197,7 +203,7 @@ export default function UserAdminPage() {
                 <button type="submit" className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 font-semibold">
                   Add User
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold">
+                <button type="button" onClick={closeAddModal} className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold">
                   Cancel
                 </button>
               </div>
