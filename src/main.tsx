@@ -12,6 +12,7 @@ import RatingAdminPage from './app/admin/ratings/page'
 import CategoryAdminPage from './app/admin/category/page'
 import ActivityLogsPage from './app/admin/activity-logs/page'
 import AdminPage from './app/admin/page'
+import RecommendationModelsPage from './app/admin/recommendation-models/page'
 import RecommendationPage from './app/recommendation/page'
 import AdminLoginPage from './app/admin/login/page'
 import AdminUserBlockedPage from './app/admin/user/page'
@@ -67,6 +68,7 @@ function AdminLayout() {
           <Route path="/ratings" element={<RatingAdminPage />} />
           <Route path="/category" element={<CategoryAdminPage />} />
           <Route path="/activity-logs" element={<ActivityLogsPage />} />
+          <Route path="/recommendation-models" element={<RecommendationModelsPage />} />
         </Routes>
       </main>
     </div>

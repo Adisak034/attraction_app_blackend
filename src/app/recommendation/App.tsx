@@ -409,60 +409,27 @@ function App() {
     setLoading(true);
     setError('');
     try {
-      const [attractions, ratings, types] = await Promise.all([
-        apiGet('/api/attraction') as Promise<AttractionApi[]>,
-        apiGet('/api/rating') as Promise<RatingApi[]>,
-        apiGet('/api/type') as Promise<TypeApi[]>,
-      ]);
+      const apiRecommendations = await apiGet(`/recommend/${id}`) as {
+        recommendations?: Recommendation[];
+        error?: string;
+      };
 
-      const typeMap = new Map<number, string>(types.map((item) => [item.type_id, item.type_name]));
-
-      const aggregates = new Map<number, { count: number; work: number; finance: number; love: number }>();
-      ratings.forEach((row) => {
-        const current = aggregates.get(row.attraction_id) ?? { count: 0, work: 0, finance: 0, love: 0 };
-        current.count += 1;
-        current.work += Number(row.rating_work || 0);
-        current.finance += Number(row.rating_finance || 0);
-        current.love += Number(row.rating_love || 0);
-        aggregates.set(row.attraction_id, current);
-      });
-
-      const mapped: Recommendation[] = attractions.map((row) => {
-        const stats = aggregates.get(row.attraction_id);
-        const count = stats?.count ?? 0;
-        const avgWork = count ? stats!.work / count : 0;
-        const avgFinance = count ? stats!.finance / count : 0;
-        const avgLove = count ? stats!.love / count : 0;
-
-        let primaryCategory = CATEGORY_LABELS.CAREER;
-        let primaryScore = avgWork;
-        if (avgFinance >= primaryScore && avgFinance >= avgLove) {
-          primaryCategory = CATEGORY_LABELS.WEALTH;
-          primaryScore = avgFinance;
-        } else if (avgLove >= primaryScore && avgLove >= avgFinance) {
-          primaryCategory = CATEGORY_LABELS.LOVE;
-          primaryScore = avgLove;
-        }
-
-        return {
-          id: String(row.attraction_id),
-          name: row.attraction_name,
-          type: row.type_id ? (typeMap.get(row.type_id) || `ประเภท ${row.type_id}`) : 'ไม่ระบุประเภท',
-          category: row.categories || primaryCategory,
-          lat: Number(row.lat) || 0,
-          lng: Number(row.lng) || 0,
-          score: primaryScore,
-          image: resolveImageUrl(row.attraction_image) || undefined,
-          sacred_object: row.sacred_obj || undefined,
-          offerings: row.offering || undefined,
-        };
-      });
-
-      const valid = mapped.filter((item) => item.lat !== 0 && item.lng !== 0);
-      if (valid.length === 0) {
-        setError('ไม่พบข้อมูลสถานที่ที่มีพิกัดสำหรับแสดงผล');
+      if (apiRecommendations?.error) {
+        throw new Error(apiRecommendations.error);
       }
-      setRecommendations((valid.length ? valid : mapped).sort((a, b) => b.score - a.score));
+
+      const recommendations = Array.isArray(apiRecommendations?.recommendations)
+        ? apiRecommendations.recommendations.map((item) => ({
+            ...item,
+            image: resolveImageUrl(item.image) || item.image,
+          }))
+        : [];
+
+      if (recommendations.length === 0) {
+        setError('ไม่พบข้อมูลคำแนะนำจากระบบ');
+      }
+
+      setRecommendations(recommendations);
       setStep('results');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

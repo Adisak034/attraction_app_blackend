@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapIcon, Users, ImageIcon, Star, Activity, BarChart3 } from 'lucide-react';
+import { MapIcon, Users, ImageIcon, Star, Activity, Brain } from 'lucide-react';
 import { apiGet } from '@/lib/apiClient';
 
 interface Stats {
@@ -127,6 +127,7 @@ export default function AdminPage() {
     { title: 'Images', href: '/admin/images', icon: ImageIcon, color: 'bg-purple-50', textColor: 'text-purple-600' },
     { title: 'Ratings', href: '/admin/ratings', icon: Star, color: 'bg-yellow-50', textColor: 'text-yellow-600' },
     { title: 'User Log', href: '/admin/activity-logs', icon: Activity, color: 'bg-indigo-50', textColor: 'text-indigo-600' },
+    { title: 'Recommendation Models', href: '/admin/recommendation-models', icon: Brain, color: 'bg-rose-50', textColor: 'text-rose-600' },
   ];
 
   return (

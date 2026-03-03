@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 
-from app.routers import attractions, users, images, ratings, lookup_tables, activity_log
+from app.routers import attractions, users, images, ratings, lookup_tables, activity_log, recommendation
 
 app = FastAPI(
     title="Temple Admin Backend",
@@ -49,6 +49,7 @@ app.include_router(images.router)
 app.include_router(ratings.router)
 app.include_router(lookup_tables.router)
 app.include_router(activity_log.router)
+app.include_router(recommendation.router)
 
 @app.get("/health")
 async def health_check():

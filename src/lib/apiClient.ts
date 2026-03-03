@@ -52,10 +52,19 @@ export function apiDelete(endpoint: string) {
   return apiCall(endpoint, { method: 'DELETE' });
 }
 
-export async function apiUploadFile(endpoint: string, file: File) {
+export async function apiUploadFile(
+  endpoint: string,
+  file: File,
+  fields?: Record<string, string>
+) {
   const url = `${API_BASE_URL}${endpoint}`;
   const formData = new FormData();
   formData.append('file', file);
+  if (fields) {
+    Object.entries(fields).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+  }
 
   const response = await fetch(url, {
     method: 'POST',
