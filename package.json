@@ -8,10 +8,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-google-maps/api": "^2.20.8",
+    "axios": "^1.13.6",
     "datatables.net": "^2.3.7",
     "datatables.net-buttons": "^3.2.6",
     "datatables.net-buttons-dt": "^3.2.6",
     "datatables.net-dt": "^2.3.7",
+    "framer-motion": "^12.34.5",
     "lucide-react": "^0.564.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
