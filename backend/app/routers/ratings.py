@@ -24,7 +24,7 @@ async def get_ratings():
                 u.user_name,
                 a.attraction_name
             FROM rating r
-            JOIN user_model u ON r.user_id = u.user_id
+            JOIN `user` u ON r.user_id = u.user_id
             JOIN attraction a ON r.attraction_id = a.attraction_id
             ORDER BY r.created_at DESC
         """

@@ -124,6 +124,7 @@ export default function EditUserPage() {
               <option value="">Select Role</option>
               <option value="user">User</option>
               <option value="admin">Admin</option>
+              <option value="user_model">User Model</option>
             </select>
           </div>
 

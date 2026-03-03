@@ -13,7 +13,7 @@ async def get_users():
         cursor = connection.cursor(dictionary=True)
         
         cursor.execute(
-            "SELECT user_id, user_name, password, role FROM user_model"
+            "SELECT user_id, user_name, password, role FROM `user`"
         )
         rows = cursor.fetchall()
         cursor.close()
@@ -35,7 +35,7 @@ async def create_user(user: UserCreate):
         cursor = connection.cursor(dictionary=True)
         
         cursor.execute(
-            "INSERT INTO user_model (user_name, password, role) VALUES (%s, %s, %s)",
+            "INSERT INTO `user` (user_name, password, role) VALUES (%s, %s, %s)",
             (user.user_name, user.password, user.role or 'user')
         )
         
@@ -65,7 +65,7 @@ async def get_user(id: int):
         cursor = connection.cursor(dictionary=True)
         
         cursor.execute(
-            "SELECT user_id, user_name, password, role FROM user_model WHERE user_id = %s",
+            "SELECT user_id, user_name, password, role FROM `user` WHERE user_id = %s",
             (id,)
         )
         user = cursor.fetchone()
@@ -108,7 +108,7 @@ async def update_user(id: int, user: UserUpdate):
             raise HTTPException(status_code=400, detail="No fields to update")
         
         values.append(id)
-        query = f"UPDATE user_model SET {', '.join(fields)} WHERE user_id = %s"
+        query = f"UPDATE `user` SET {', '.join(fields)} WHERE user_id = %s"
         
         cursor.execute(query, values)
         connection.commit()
@@ -139,11 +139,7 @@ async def delete_user(id: int):
         # Delete user's ratings
         cursor.execute("DELETE FROM rating WHERE user_id = %s", (id,))
         
-        # Delete user from users bridge table
-        cursor.execute("DELETE FROM users WHERE model_user_id = %s", (id,))
-        
-        # Delete user from user_model
-        cursor.execute("DELETE FROM user_model WHERE user_id = %s", (id,))
+        cursor.execute("DELETE FROM `user` WHERE user_id = %s", (id,))
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="User not found")
         

@@ -5,7 +5,7 @@ import DataTable from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
 
-// Interface based on the 'user_model' table schema
+// Interface based on the 'user' table schema
 interface User {
   user_id: number;
   user_name: string;
@@ -197,6 +197,7 @@ export default function UserAdminPage() {
                 <select id="role" name="role" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full p-2 border rounded-md shadow-sm">
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
+                  <option value="user_model">User Model</option>
                 </select>
               </div>
               <div className="md:col-span-3 flex gap-4">

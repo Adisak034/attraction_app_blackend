@@ -23,7 +23,7 @@ async def get_activity_logs(limit: int = 100):
             al.action_type,
             al.created_at
         FROM activity_log al
-        LEFT JOIN user_model um ON al.user_id = um.user_id
+        LEFT JOIN `user` um ON al.user_id = um.user_id
         LEFT JOIN attraction a ON al.attraction_id = a.attraction_id
         ORDER BY al.created_at DESC
         LIMIT %s
