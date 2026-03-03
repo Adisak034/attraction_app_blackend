@@ -525,9 +525,10 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen text-white selection:bg-faith-gold/30 font-outfit overflow-x-hidden">
+    <div className="min-h-screen flex flex-col text-white selection:bg-faith-gold/30 font-outfit overflow-x-hidden">
       <DivineBackground currentBgIndex={currentBg} backgrounds={backgrounds} />
 
+      <div className="flex-1">
       <AnimatePresence mode="wait">
         {step === 'selection' && (
           <motion.div
@@ -615,14 +616,14 @@ function App() {
                 <p className="text-gray-400 text-sm font-medium">ร่วมเดินทางสู่เส้นทางแห่งศรัทธา</p>
               </div>
 
-              <form onSubmit={step === 'register' ? handleRegister : handleLogin} className="space-y-7">
+              <form onSubmit={step === 'register' ? handleRegister : handleLogin} className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-faith-gold/70 uppercase tracking-[.25em] pl-1">ชื่อ / ชื่อผู้ใช้</label>
+                  <label className="text-sm font-semibold text-faith-gold/80 pl-1">ชื่อผู้ใช้</label>
                   <div className="relative">
-                    <User className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                    <User className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none" size={18} />
                     <input
-                      type="text" required placeholder="ชื่อของคุณ"
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
+                      type="text" required placeholder="กรอกชื่อผู้ใช้"
+                      className="w-full text-sm bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
                       value={formData.name}
                       onChange={e => setFormData({ ...formData, name: e.target.value })}
                     />
@@ -631,12 +632,12 @@ function App() {
 
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-faith-gold/70 uppercase tracking-[.25em] pl-1">รหัสผ่าน</label>
+                  <label className="text-sm font-semibold text-faith-gold/80 pl-1">รหัสผ่าน</label>
                   <div className="relative">
-                    <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                    <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none" size={18} />
                     <input
                       type={showPassword ? "text" : "password"} required placeholder="รหัสผ่านของคุณ"
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
+                      className="w-full text-sm bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
                       value={formData.password}
                       onChange={e => setFormData({ ...formData, password: e.target.value })}
                     />
@@ -645,12 +646,12 @@ function App() {
 
                 {step === 'register' && (
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-faith-gold/70 uppercase tracking-[.25em] pl-1">ยืนยันรหัสผ่าน</label>
+                    <label className="text-sm font-semibold text-faith-gold/80 pl-1">ยืนยันรหัสผ่าน</label>
                     <div className="relative">
-                      <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                      <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none" size={18} />
                       <input
                         type={showPassword ? "text" : "password"} required placeholder="ยืนยันรหัสผ่าน"
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
+                        className="w-full text-sm bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
                         value={formData.confirmPassword}
                         onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
                       />
@@ -662,14 +663,14 @@ function App() {
                   <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${showPassword ? 'bg-faith-gold border-faith-gold' : 'border-white/20'}`}>
                     {showPassword && <CheckCircle2 size={12} className="text-black" />}
                   </div>
-                  <span className="text-[10px] text-gray-400 font-bold group-hover:text-white transition-colors uppercase tracking-widest">แสดงรหัสผ่าน</span>
+                  <span className="text-xs text-gray-300 font-medium group-hover:text-white transition-colors">แสดงรหัสผ่าน</span>
                 </div>
 
                 <div className="flex items-center gap-3 px-1 cursor-pointer group" onClick={() => setRememberMe(!rememberMe)}>
                   <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-faith-gold border-faith-gold' : 'border-white/20'}`}>
                     {rememberMe && <CheckCircle2 size={16} className="text-black" />}
                   </div>
-                  <span className="text-[11px] text-gray-400 font-bold group-hover:text-white transition-colors uppercase tracking-widest">จดจำบัญชีในอุปกรณ์นี้</span>
+                  <span className="text-sm text-gray-300 font-medium group-hover:text-white transition-colors">จดจำบัญชีในอุปกรณ์นี้</span>
                 </div>
 
                 {error && <p className="text-red-400 text-xs text-center font-bold bg-red-950/40 py-3 rounded-2xl border border-red-900/50">{error}</p>}
@@ -685,14 +686,14 @@ function App() {
                 </motion.button>
               </form>
 
-              <p className="mt-10 text-center text-xs text-gray-500 font-bold tracking-widest">
-                {step === 'register' ? 'มีบัญชีอยู่แล้ว?' : 'เพิ่งเคยมาที่นี่ครั้งแรก?'} <button onClick={() => setStep(step === 'register' ? 'login' : 'register')} className="text-faith-gold hover:underline underline-offset-4 ml-1">เปลี่ยนโหมด</button>
+              <p className="mt-10 text-center text-sm text-gray-400">
+                {step === 'register' ? 'มีบัญชีอยู่แล้ว?' : 'เพิ่งเคยมาที่นี่ครั้งแรก?'} <button type="button" onClick={() => setStep(step === 'register' ? 'login' : 'register')} className="text-faith-gold hover:underline underline-offset-4 ml-1 font-semibold">{step === 'register' ? 'เข้าสู่ระบบ' : 'ลงทะเบียน'}</button>
               </p>
             </div>
 
             <button
               onClick={() => setStep('selection')}
-              className="mt-10 text-gray-600 hover:text-faith-gold text-[10px] w-full transition-all uppercase tracking-[0.4em] font-black"
+              className="mt-8 text-gray-400 hover:text-faith-gold text-sm w-full transition-all font-semibold"
             >
               ← ยกเลิกและกลับหน้าหลัก
             </button>
@@ -703,7 +704,7 @@ function App() {
           <motion.div
             key="results"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="w-full relative z-10 font-outfit min-h-screen pb-10 flex flex-col"
+            className="w-full relative z-10 font-outfit min-h-screen pb-0 flex flex-col"
           >
             {/* Navbar */}
             <nav className="flex justify-between items-center px-6 md:px-12 py-6 absolute w-full z-50">
@@ -715,14 +716,6 @@ function App() {
                   <span className="text-xl font-black gold-gradient-text tracking-tighter uppercase leading-none">ศรัทธา AI</span>
                   <span className="text-[8px] text-gray-400 tracking-widest uppercase">ผู้นำทางจิตวิญญาณ</span>
                 </div>
-              </div>
-
-              <div className="hidden lg:flex items-center gap-10">
-                {['หน้าแรก', 'สถานที่ศักดิ์สิทธิ์', 'แผนที่', 'บทสวดมนต์', 'เกี่ยวกับ'].map((link) => (
-                  <a key={link} href="#" className="text-white hover:text-faith-gold text-xs font-bold uppercase tracking-widest transition-colors">
-                    {link}
-                  </a>
-                ))}
               </div>
 
               <div className="flex items-center gap-4">
@@ -763,7 +756,7 @@ function App() {
               </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 mb-24 flex-1 w-full relative z-20">
+            <main className="max-w-7xl mx-auto px-6 mb-10 flex-1 w-full relative z-20">
               <div className="flex flex-col mb-12 gap-6 w-full items-center">
                 <h3 className="text-3xl md:text-5xl font-black uppercase tracking-tight flex flex-col md:flex-row gap-2 text-center md:text-left">
                   <span className="text-faith-gold">สถานที่</span> <span className="text-white">แนะนำสำหรับคุณ</span>
@@ -867,27 +860,27 @@ function App() {
             </main>
 
             {/* Footer matching wireframe */}
-            <footer className="w-full bg-black/40 pt-16 pb-8 border-t border-white/10 mt-auto backdrop-blur-lg">
-              <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between mb-12 gap-10">
+            <footer className="w-full bg-black/40 pt-6 pb-3 border-t border-white/10 mt-auto backdrop-blur-lg">
+              <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between mb-3 gap-4">
                 <div className="max-w-sm">
-                  <div className="flex items-center gap-3 mb-6 opacity-60">
+                  <div className="flex items-center gap-3 mb-2 opacity-60">
                     <Compass size={32} className="text-faith-gold" />
                     <span className="text-xl font-black tracking-widest text-white">ศรัทธา AI</span>
                   </div>
-                  <p className="text-xs text-gray-400 leading-relaxed max-w-xs mb-6 font-light">
+                  <p className="text-xs text-gray-400 leading-relaxed max-w-xs font-light">
                     ค้นพบพลังแห่งจิตวิญญาณแห่งนครปฐม นำความสงบสุขและความเป็นสิริมงคลมาสู่ชีวิตผ่านการแนะนำสถานที่ศักดิ์สิทธิ์
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-12 md:gap-24 opacity-80">
-                  <div className="flex flex-col gap-4">
-                    <h5 className="text-faith-gold text-xs font-black uppercase tracking-[0.2em] mb-2">แพลตฟอร์ม</h5>
+                <div className="flex flex-wrap gap-6 md:gap-12 opacity-80">
+                  <div className="flex flex-col gap-2">
+                    <h5 className="text-faith-gold text-xs font-black uppercase tracking-[0.2em] mb-1">แพลตฟอร์ม</h5>
                     <a href="#" className="text-xs text-gray-400 hover:text-white transition-colors">เริ่มต้นการเดินทาง</a>
                     <a href="#" className="text-xs text-gray-400 hover:text-white transition-colors">สำรวจแผนที่</a>
                     <a href="#" className="text-xs text-gray-400 hover:text-white transition-colors">สถานที่ศักดิ์สิทธิ์</a>
                   </div>
-                  <div className="flex flex-col gap-4">
-                    <h5 className="text-faith-gold text-xs font-black uppercase tracking-[0.2em] mb-2">ข้อมูลทางกฎหมาย</h5>
+                  <div className="flex flex-col gap-2">
+                    <h5 className="text-faith-gold text-xs font-black uppercase tracking-[0.2em] mb-1">ข้อมูลทางกฎหมาย</h5>
                     <a href="#" className="text-xs text-gray-400 hover:text-white transition-colors">นโยบายความเป็นส่วนตัว</a>
                     <a href="#" className="text-xs text-gray-400 hover:text-white transition-colors">เงื่อนไขการให้บริการ</a>
                     <a href="#" className="text-xs text-gray-400 hover:text-white transition-colors">ติดต่อฝ่ายสนับสนุน</a>
@@ -895,8 +888,7 @@ function App() {
                 </div>
               </div>
 
-              <div className="max-w-7xl mx-auto px-6 border-t border-white/10 pt-8 flex flex-col items-center">
-                <div className="w-full max-w-md h-[1px] bg-gradient-to-r from-transparent via-faith-gold/30 to-transparent mb-6" />
+              <div className="max-w-7xl mx-auto px-6 border-t border-white/10 pt-3 flex flex-col items-center">
                 <span className="text-[10px] text-gray-600 tracking-widest uppercase">
                   © 2026 Nakornpathom Faith Experience
                 </span>
@@ -905,6 +897,7 @@ function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
 
       {/* Detail Modal */}
       <AnimatePresence>
@@ -1018,9 +1011,11 @@ function App() {
       </AnimatePresence>
 
       {/* Footer Branding */}
-      <footer className="py-12 text-center text-[10px] font-black tracking-[0.6em] text-gray-700 uppercase relative z-10 pointer-events-none">
-        © 2026 Nakornpathom Faith Experience • AI Recommendation System
-      </footer>
+      {step !== 'results' && (
+        <footer className="py-12 text-center text-xs font-semibold text-gray-500 relative z-10 pointer-events-none">
+          © 2026 Nakornpathom Faith Experience • AI Recommendation System
+        </footer>
+      )}
 
       {/* Rating Modal — shows after user returns from Google Maps */}
       <AnimatePresence>
