@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPut } from '@/lib/apiClient';
+import { showError, showSuccess } from '@/lib/swal';
 
 interface User {
   user_id: number;
@@ -54,7 +55,7 @@ export default function EditUserPage() {
     if (!userId) return;
 
     if (!formData.user_name?.trim()) {
-      alert('Username is required.');
+      await showError('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อผู้ใช้');
       return;
     }
 
@@ -64,10 +65,10 @@ export default function EditUserPage() {
         password: formData.password,
         role: formData.role || null,
       });
-      alert('User updated successfully!');
+      await showSuccess('แก้ไขสำเร็จ', `แก้ไขข้อมูลผู้ใช้ "${formData.user_name.trim()}" เรียบร้อยแล้ว`);
       navigate('/admin/users', { replace: true });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
   };
 

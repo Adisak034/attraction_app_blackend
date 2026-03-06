@@ -14,7 +14,7 @@ export default {
         'faith-accent': '#8B0000',
       },
       fontFamily: {
-        outfit: ['Outfit', 'system-ui', 'sans-serif'],
+        outfit: ['IBM Plex Sans Thai Looped', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
       },
     },
   },

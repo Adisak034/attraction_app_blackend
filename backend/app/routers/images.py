@@ -3,13 +3,54 @@ from app.core.database import get_connection
 from app.schemas.schemas import ImageCreate, ImageUpdate
 from typing import List, Optional
 import os
-import time
-import random
-import string
+from urllib.parse import urlparse
 
 router = APIRouter(prefix="/api/image", tags=["images"])
 
-UPLOAD_DIR = "public/uploads"
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+UPLOAD_DIR = os.path.join(PROJECT_ROOT, "public", "uploads")
+
+
+def _normalize_image_path(raw_value: str) -> str:
+    """Normalize any local upload reference to canonical /uploads/<filename>."""
+    value = (raw_value or "").strip()
+    if not value:
+        return value
+
+    normalized = value.replace("\\", "/")
+
+    if normalized.startswith("http://") or normalized.startswith("https://"):
+        parsed = urlparse(normalized)
+        path = (parsed.path or "").replace("\\", "/")
+        if "/uploads/" in path:
+            filename = path.rsplit("/", 1)[-1]
+            return f"/uploads/{filename}"
+        if "/images/" in path:
+            filename = path.rsplit("/", 1)[-1]
+            return f"/uploads/{filename}"
+        return value
+
+    if normalized.startswith("public/uploads/"):
+        filename = normalized.rsplit("/", 1)[-1]
+        return f"/uploads/{filename}"
+
+    if normalized.startswith("uploads/"):
+        filename = normalized.rsplit("/", 1)[-1]
+        return f"/uploads/{filename}"
+
+    if normalized.startswith("/uploads/"):
+        filename = normalized.rsplit("/", 1)[-1]
+        return f"/uploads/{filename}"
+
+    if normalized.startswith("images/"):
+        filename = normalized.rsplit("/", 1)[-1]
+        return f"/uploads/{filename}"
+
+    if normalized.startswith("/images/"):
+        filename = normalized.rsplit("/", 1)[-1]
+        return f"/uploads/{filename}"
+
+    return value
 
 @router.get("", response_model=List[dict])
 async def get_images(attraction_id: Optional[int] = None):
@@ -29,6 +70,9 @@ async def get_images(attraction_id: Optional[int] = None):
         rows = cursor.fetchall()
         cursor.close()
         connection.close()
+
+        for row in rows:
+            row["attraction_image"] = _normalize_image_path(row.get("attraction_image") or "")
         
         return rows
     except Exception as e:
@@ -45,9 +89,11 @@ async def create_image(image: ImageCreate):
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
         
+        normalized_path = _normalize_image_path(image.Image_name)
+
         cursor.execute(
             "UPDATE attraction SET attraction_image = %s WHERE attraction_id = %s",
-            (image.Image_name, image.attraction_id)
+            (normalized_path, image.attraction_id)
         )
         
         connection.commit()
@@ -56,7 +102,7 @@ async def create_image(image: ImageCreate):
         
         return {
             "attraction_id": image.attraction_id,
-            "Image_name": image.Image_name,
+            "Image_name": normalized_path,
             "message": "Image updated successfully"
         }
     
@@ -83,6 +129,8 @@ async def get_image(id: int):
         
         if not image:
             raise HTTPException(status_code=404, detail="Attraction not found")
+
+        image["attraction_image"] = _normalize_image_path(image.get("attraction_image") or "")
         
         return image
     
@@ -102,9 +150,11 @@ async def update_image(id: int, image: ImageUpdate):
         if not image.Image_name:
             raise HTTPException(status_code=400, detail="Image_name is required")
         
+        normalized_path = _normalize_image_path(image.Image_name)
+
         cursor.execute(
             "UPDATE attraction SET attraction_image = %s WHERE attraction_id = %s",
-            (image.Image_name, id)
+            (normalized_path, id)
         )
         connection.commit()
         cursor.close()
@@ -161,7 +211,10 @@ async def delete_image(id: int):
             connection.close()
 
 @router.post("/upload")
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(
+    file: UploadFile = File(...),
+    attraction_id: Optional[int] = Form(None),
+):
     """Upload an image file"""
     try:
         # Validate file type
@@ -178,11 +231,28 @@ async def upload_image(file: UploadFile = File(...)):
         
         # Create upload directory if it doesn't exist
         os.makedirs(UPLOAD_DIR, exist_ok=True)
-        
-        # Generate unique filename
-        timestamp = int(time.time())
-        random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
-        filename = f"{timestamp}-{random_str}{file_ext}"
+
+        # Use attraction_id as filename when provided (example: 12.png)
+        if attraction_id is not None:
+            if attraction_id <= 0:
+                raise HTTPException(status_code=400, detail="attraction_id must be greater than 0")
+
+            # Remove existing files for the same attraction id but different extensions.
+            prefix = f"{attraction_id}."
+            for existing in os.listdir(UPLOAD_DIR):
+                if existing.startswith(prefix):
+                    try:
+                        os.remove(os.path.join(UPLOAD_DIR, existing))
+                    except OSError:
+                        pass
+
+            filename = f"{attraction_id}{file_ext}"
+        else:
+            # Backward-compatible fallback naming when attraction_id is not sent.
+            timestamp = int(time.time())
+            random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+            filename = f"{timestamp}-{random_str}{file_ext}"
+
         filepath = os.path.join(UPLOAD_DIR, filename)
         
         # Save file

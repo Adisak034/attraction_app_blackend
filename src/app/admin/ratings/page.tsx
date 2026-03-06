@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import DataTable from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import { apiGet, apiDelete } from '@/lib/apiClient';
+import { confirmAction, showError, showInfo, showSuccess } from '@/lib/swal';
 
 // Interface based on the database schema
 interface Rating {
@@ -24,6 +25,55 @@ export default function RatingAdminPage() {
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const escapeCsv = (value: string | number | null | undefined) => {
+    const text = String(value ?? '');
+    if (/[",\n]/.test(text)) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+
+  const handleExportCsv = () => {
+    if (ratings.length === 0) {
+      void showInfo('ไม่มีข้อมูล', 'ไม่มีคะแนนสำหรับส่งออก');
+      return;
+    }
+
+    const headers = [
+      'rating_id',
+      'attraction_name',
+      'user_name',
+      'rating_work',
+      'rating_finance',
+      'rating_love',
+      'created_at',
+    ];
+
+    const rows = ratings.map((rating) => [
+      rating.rating_id,
+      rating.attraction_name,
+      rating.user_name,
+      rating.rating_work,
+      rating.rating_finance,
+      rating.rating_love,
+      rating.created_at,
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCsv(cell)).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ratings-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const fetchRatings = async () => {
     try {
@@ -71,15 +121,19 @@ export default function RatingAdminPage() {
   }, [loading, ratings]);
 
   const handleDelete = async (ratingId: number, userName: string, attractionName: string) => {
-    if (!confirm(`Delete rating from "${userName}" for "${attractionName}"?`)) {
+    const isConfirmed = await confirmAction(
+      'ยืนยันการลบคะแนน',
+      `ต้องการลบคะแนนของ "${userName}" สำหรับสถานที่ "${attractionName}" ใช่หรือไม่?`
+    );
+    if (!isConfirmed) {
       return;
     }
     try {
       await apiDelete(`/api/rating/${ratingId}`);
       fetchRatings();
-      alert('Rating deleted successfully!');
+      await showSuccess('ลบสำเร็จ', `ลบคะแนนของ "${userName}" ที่ให้กับ "${attractionName}" เรียบร้อยแล้ว`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error deleting rating');
+      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'ไม่สามารถลบคะแนนได้');
     }
   };
 
@@ -119,6 +173,12 @@ export default function RatingAdminPage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Rating Management</h1>
         </div>
+        <button
+          onClick={handleExportCsv}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-emerald-700 font-semibold"
+        >
+          Export to CSV
+        </button>
       </div>
 
       {/* Table Section */}

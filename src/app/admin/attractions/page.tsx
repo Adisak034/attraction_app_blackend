@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import DataTable from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
+import { confirmAction, showError, showSuccess } from '@/lib/swal';
 
 // Interfaces based on the database schema
 interface Attraction {
@@ -67,6 +68,7 @@ export default function AttractionAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
   const closeAddModal = () => {
@@ -121,6 +123,10 @@ export default function AttractionAdminPage() {
       dom: 'lrtip',
     });
 
+    if (searchTerm.trim()) {
+      dataTableRef.current.search(searchTerm.trim()).draw();
+    }
+
     return () => {
       if (dataTableRef.current) {
         dataTableRef.current.destroy();
@@ -128,6 +134,17 @@ export default function AttractionAdminPage() {
       }
     };
   }, [loading, attractions]);
+
+  const handleSearch = () => {
+    if (!dataTableRef.current) return;
+    dataTableRef.current.search(searchTerm.trim()).draw();
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    if (!dataTableRef.current) return;
+    dataTableRef.current.search('').draw();
+  };
 
   const formatCoordinate = (value: number | string | null | undefined) => {
     if (value === null || value === undefined || value === '') return '-';
@@ -169,7 +186,7 @@ export default function AttractionAdminPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!formData.attraction_name.trim()) {
-        alert('Attraction Name is required.');
+        await showError('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อสถานที่');
         return;
     }
     try {
@@ -185,23 +202,27 @@ export default function AttractionAdminPage() {
       closeAddModal();
       await fetchData();
       navigate('/admin/attractions', { replace: true });
-      alert('Attraction created successfully!');
+      await showSuccess('บันทึกสำเร็จ', `เพิ่มสถานที่ "${formData.attraction_name.trim()}" เรียบร้อยแล้ว`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
   };
 
   // Handle delete action
-  const handleDelete = async (attractionId: number) => {
-    if (!confirm('Are you sure you want to delete this attraction? This action cannot be undone.')) {
+  const handleDelete = async (attractionId: number, attractionName: string) => {
+    const isConfirmed = await confirmAction(
+      'ยืนยันการลบสถานที่',
+      `ต้องการลบ "${attractionName}" ใช่หรือไม่?`
+    );
+    if (!isConfirmed) {
       return;
     }
     try {
       await apiDelete(`/api/attraction/${attractionId}`);
       fetchData(); // Refresh data
-      alert('Attraction deleted successfully!');
+      await showSuccess('ลบสำเร็จ', `ลบสถานที่ "${attractionName}" เรียบร้อยแล้ว`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
   };
 
@@ -224,8 +245,9 @@ export default function AttractionAdminPage() {
 
       if (deleteButton) {
         const attractionId = Number(deleteButton.dataset.attractionId);
+        const attractionName = deleteButton.dataset.attractionName || `ID ${attractionId}`;
         if (Number.isFinite(attractionId)) {
-          handleDelete(attractionId);
+          handleDelete(attractionId, attractionName);
         }
       }
     };
@@ -349,6 +371,34 @@ export default function AttractionAdminPage() {
       <div className="border rounded-lg shadow-md bg-white overflow-hidden">
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Attractions</h2>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSearch();
+            }}
+            className="flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search attractions..."
+              className="w-56 p-2 border rounded-md text-sm"
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-blue-700"
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-semibold hover:bg-gray-300"
+            >
+              Clear
+            </button>
+          </form>
         </div>
         {error && <p className="text-red-500 mb-4 p-6">{error}</p>}
         {loading && <p className="text-gray-500 p-6">Loading...</p>}
@@ -385,7 +435,7 @@ export default function AttractionAdminPage() {
                   <td>
                     <div className="flex gap-2 justify-center">
                       <button type="button" className="edit-attraction-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm" data-attraction-id={attr.attraction_id}>Edit</button>
-                      <button type="button" className="delete-attraction-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm" data-attraction-id={attr.attraction_id}>Delete</button>
+                      <button type="button" className="delete-attraction-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm" data-attraction-id={attr.attraction_id} data-attraction-name={attr.attraction_name}>Delete</button>
                     </div>
                   </td>
                 </tr>

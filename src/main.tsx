@@ -14,7 +14,6 @@ import ActivityLogsPage from './app/admin/activity-logs/page'
 import AdminPage from './app/admin/page'
 import RecommendationModelsPage from './app/admin/recommendation-models/page'
 import RecommendationPage from './app/recommendation/page'
-import AdminLoginPage from './app/admin/login/page'
 import AdminUserBlockedPage from './app/admin/user/page'
 import { clearAuthSession, getAuthSession } from './lib/auth'
 
@@ -22,7 +21,7 @@ function ProtectedAdminRoute({ children }: { children: React.ReactElement }) {
   const session = getAuthSession();
 
   if (!session) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (session.role !== 'admin') {
@@ -43,11 +42,17 @@ function AdminLayout() {
         <div className="container mx-auto flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-800">Temple Admin Dashboard</h1>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/', { replace: true })}
+              className="px-3 py-1.5 text-sm rounded-md border text-gray-700 hover:bg-gray-50"
+            >
+              Go to Website
+            </button>
             <span className="text-sm text-gray-500">{session?.user_name}</span>
             <button
               onClick={() => {
                 clearAuthSession();
-                navigate('/admin/login', { replace: true });
+                navigate('/', { replace: true });
               }}
               className="px-3 py-1.5 text-sm rounded-md border text-gray-700 hover:bg-gray-50"
             >
@@ -69,6 +74,7 @@ function AdminLayout() {
           <Route path="/category" element={<CategoryAdminPage />} />
           <Route path="/activity-logs" element={<ActivityLogsPage />} />
           <Route path="/recommendation-models" element={<RecommendationModelsPage />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>
     </div>
@@ -79,7 +85,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/admin/login" element={<Navigate to="/" replace />} />
         <Route path="/admin/user" element={<AdminUserBlockedPage />} />
         <Route path="/admin/*" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>} />
         <Route path="/recommend" element={<RecommendationPage />} />

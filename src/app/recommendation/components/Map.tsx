@@ -1,6 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { GoogleMap, useJsApiLoader, InfoWindow } from '@react-google-maps/api';
 import { Loader2, Star, Navigation } from 'lucide-react';
+
+const MAP_LIBRARIES: ('marker')[] = ['marker'];
 
 interface Recommendation {
     id: string;
@@ -10,6 +12,7 @@ interface Recommendation {
     lat: number;
     lng: number;
     score: number;
+    image?: string;
 }
 
 interface MapProps {
@@ -29,8 +32,7 @@ const center = {
     lng: 100.0443
 };
 
-const options = {
-    styles: [
+const mapStyles: google.maps.MapTypeStyle[] = [
         {
             "elementType": "geometry",
             "stylers": [{ "color": "#242f3e" }]
@@ -118,30 +120,77 @@ const options = {
             "elementType": "labels.text.stroke",
             "stylers": [{ "color": "#17263c" }]
         }
-    ],
-    disableDefaultUI: true,
-    zoomControl: true,
+    ];
+
+const toNumber = (value: unknown): number | null => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) ? num : null;
+};
+
+const isValidLatLng = (lat: number, lng: number): boolean => {
+    if (lat < -90 || lat > 90) return false;
+    if (lng < -180 || lng > 180) return false;
+    // Treat (0, 0) as invalid app data in this project.
+    if (lat === 0 && lng === 0) return false;
+    return true;
 };
 
 const Map: React.FC<MapProps> = ({ recommendations, className }) => {
-    const { isLoaded } = useJsApiLoader({
+    const apiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '').trim();
+    const mapId = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || '').trim() || 'DEMO_MAP_ID';
+
+    const mapOptions = useMemo<google.maps.MapOptions>(() => {
+        const baseOptions: google.maps.MapOptions = {
+            disableDefaultUI: true,
+            zoomControl: true,
+        };
+
+        if (mapId) {
+            return {
+                ...baseOptions,
+                mapId,
+            };
+        }
+
+        return {
+            ...baseOptions,
+            styles: mapStyles,
+        };
+    }, [mapId]);
+
+    const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
-        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+        googleMapsApiKey: apiKey,
+        libraries: MAP_LIBRARIES,
     });
 
-    const [, setMap] = useState<google.maps.Map | null>(null);
+    const [map, setMap] = useState<google.maps.Map | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<Recommendation | null>(null);
+    const [brokenImageIds, setBrokenImageIds] = useState<Set<string>>(new Set());
+
+    const markerPoints = useMemo(() => recommendations
+        .map((place) => {
+            const lat = toNumber(place.lat);
+            const lng = toNumber(place.lng);
+            if (lat === null || lng === null || !isValidLatLng(lat, lng)) {
+                return null;
+            }
+            return {
+                ...place,
+                lat,
+                lng,
+            };
+        })
+        .filter((item): item is Recommendation => item !== null), [recommendations]);
 
     const onLoad = useCallback((map: google.maps.Map) => {
         const bounds = new window.google.maps.LatLngBounds();
-        if (recommendations.length > 0) {
-            recommendations.forEach(place => {
-                if (place.lat && place.lng) {
-                    bounds.extend({ lat: place.lat, lng: place.lng });
-                }
+        if (markerPoints.length > 0) {
+            markerPoints.forEach(place => {
+                bounds.extend({ lat: place.lat, lng: place.lng });
             });
-            if (recommendations.length === 1) {
-                map.setCenter({ lat: recommendations[0].lat, lng: recommendations[0].lng });
+            if (markerPoints.length === 1) {
+                map.setCenter({ lat: markerPoints[0].lat, lng: markerPoints[0].lng });
                 map.setZoom(15);
             } else {
                 map.fitBounds(bounds);
@@ -151,11 +200,52 @@ const Map: React.FC<MapProps> = ({ recommendations, className }) => {
             map.setZoom(10);
         }
         setMap(map);
-    }, [recommendations]);
+    }, [markerPoints]);
 
     const onUnmount = useCallback(() => {
         setMap(null);
     }, []);
+
+    useEffect(() => {
+        if (!isLoaded || !map || !window.google?.maps?.marker?.AdvancedMarkerElement) {
+            return;
+        }
+
+        const markerInstances: google.maps.marker.AdvancedMarkerElement[] = [];
+        const markerListeners: google.maps.MapsEventListener[] = [];
+
+        markerPoints.forEach((place) => {
+            const marker = new window.google.maps.marker.AdvancedMarkerElement({
+                map,
+                position: { lat: place.lat, lng: place.lng },
+                title: place.name,
+            });
+
+            const clickListener = marker.addListener('click', () => {
+                setSelectedPlace(place);
+            });
+
+            markerInstances.push(marker);
+            markerListeners.push(clickListener);
+        });
+
+        return () => {
+            markerListeners.forEach((listener) => listener.remove());
+            markerInstances.forEach((marker) => {
+                marker.map = null;
+            });
+        };
+    }, [isLoaded, map, markerPoints]);
+
+    if (loadError) {
+        return (
+            <div className={`w-full h-[500px] flex items-center justify-center bg-black/40 rounded-[1.5rem] border border-red-400/40 p-6 text-center ${className}`}>
+                <p className="text-sm text-red-200 font-semibold">
+                    โหลด Google Maps ไม่สำเร็จ กรุณาตรวจสอบ API key, API restrictions และเปิดใช้ Maps JavaScript API
+                </p>
+            </div>
+        );
+    }
 
     if (!isLoaded) {
         return (
@@ -167,9 +257,14 @@ const Map: React.FC<MapProps> = ({ recommendations, className }) => {
 
     return (
         <div className={`relative w-full ${className || "h-[500px]"}`}>
-            {!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
+            {!apiKey && (
                 <div className="absolute top-0 left-0 w-full z-50 bg-red-900/80 text-white p-2 text-center text-xs font-bold rounded-t-[1.5rem]">
                     คำเตือน: ไม่พบ VITE_GOOGLE_MAPS_API_KEY ในไฟล์ .env
+                </div>
+            )}
+            {apiKey && recommendations.length > 0 && markerPoints.length === 0 && (
+                <div className="absolute top-0 left-0 w-full z-50 bg-amber-900/80 text-white p-2 text-center text-xs font-bold rounded-t-[1.5rem]">
+                    ไม่พบพิกัดที่ถูกต้องสำหรับปักหมุดจากข้อมูลที่ได้รับ
                 </div>
             )}
             <GoogleMap
@@ -178,27 +273,8 @@ const Map: React.FC<MapProps> = ({ recommendations, className }) => {
                 zoom={10}
                 onLoad={onLoad}
                 onUnmount={onUnmount}
-                options={options}
+                options={mapOptions}
             >
-                {recommendations.map((place) => (
-                    place.lat && place.lng ? (
-                        <Marker
-                            key={place.id}
-                            position={{ lat: place.lat, lng: place.lng }}
-                            onClick={() => setSelectedPlace(place)}
-                            // icon={{
-                            //   path: google.maps.SymbolPath.CIRCLE,
-                            //   scale: 10,
-                            //   fillColor: "#D4AF37",
-                            //   fillOpacity: 1,
-                            //   strokeWeight: 2,
-                            //   strokeColor: "#FFFFFF",
-                            // }}
-                            animation={window.google.maps.Animation.DROP}
-                        />
-                    ) : null
-                ))}
-
                 {selectedPlace && (
                     <InfoWindow
                         position={{ lat: selectedPlace.lat, lng: selectedPlace.lng }}
@@ -209,6 +285,24 @@ const Map: React.FC<MapProps> = ({ recommendations, className }) => {
                         }}
                     >
                         <div className="p-2 min-w-[200px] text-[#1A0404]">
+                            {selectedPlace.image && !brokenImageIds.has(selectedPlace.id) ? (
+                                <img
+                                    src={selectedPlace.image}
+                                    alt={selectedPlace.name}
+                                    className="w-full h-28 object-cover rounded-md mb-2"
+                                    onError={() => {
+                                        setBrokenImageIds((prev) => {
+                                            const next = new Set(prev);
+                                            next.add(selectedPlace.id);
+                                            return next;
+                                        });
+                                    }}
+                                />
+                            ) : (
+                                <div className="w-full h-28 rounded-md mb-2 bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-sm font-semibold">
+                                    No Image
+                                </div>
+                            )}
                             <h3 className="text-lg font-black mb-1">{selectedPlace.name}</h3>
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="px-2 py-0.5 bg-faith-gold/20 text-xs font-bold rounded text-[#8B7500]">{selectedPlace.type}</span>

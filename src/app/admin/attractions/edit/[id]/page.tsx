@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPut } from '@/lib/apiClient';
+import { showError, showSuccess } from '@/lib/swal';
 
 // Interfaces (can be shared from a common types file later)
 interface Category {
@@ -121,7 +122,7 @@ export default function EditAttractionPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!formData.attraction_name.trim()) {
-        alert('Attraction Name is required.');
+        await showError('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อสถานที่');
         return;
     }
     try {
@@ -136,10 +137,10 @@ export default function EditAttractionPage() {
         offering: formData.offering || null,
         category_ids: formData.category_ids,
       });
-      alert('Attraction updated successfully!');
+      await showSuccess('แก้ไขสำเร็จ', `แก้ไขสถานที่ "${formData.attraction_name.trim()}" เรียบร้อยแล้ว`);
       navigate('/admin/attractions', { replace: true });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
   };
 

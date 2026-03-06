@@ -42,6 +42,44 @@ python -m uvicorn app.main:app --reload --port 8000
 ```
 ✅ Backend: `http://localhost:8000`
 
+### Backend Script (Linux Server)
+```bash
+# make script executable once
+chmod +x scripts/run-backend.sh
+
+# development mode (default port 8000)
+./scripts/run-backend.sh dev
+
+# production mode (uvicorn workers)
+./scripts/run-backend.sh production
+
+# custom host/port/workers
+HOST=0.0.0.0 PORT=8000 WORKERS=4 ./scripts/run-backend.sh production
+```
+
+### MySQL + Manager Scripts (Linux Server)
+```bash
+# make scripts executable once
+chmod +x scripts/install-mysql.sh
+chmod +x scripts/install-mysql-manager.sh
+chmod +x scripts/run-mysql.sh
+chmod +x scripts/run-mysql-manager.sh
+
+# 1) install database
+sudo ./scripts/install-mysql.sh
+
+# 2) install web-based MySQL manager (Adminer)
+sudo ./scripts/install-mysql-manager.sh
+
+# 3) manage services
+./scripts/run-mysql.sh start
+./scripts/run-mysql-manager.sh start
+
+# optional service actions
+./scripts/run-mysql.sh status
+./scripts/run-mysql-manager.sh restart
+```
+
 ### 4️⃣ Frontend (React)
 ```bash
 # From project root
@@ -49,6 +87,33 @@ npm install
 npm run dev
 ```
 ✅ Frontend: `http://localhost:3000/admin`
+
+### Frontend Script (Linux Server)
+```bash
+# make script executable once
+chmod +x scripts/run-frontend.sh
+
+# development mode (default port 5173)
+./scripts/run-frontend.sh dev
+
+# production preview mode (build + preview, default port 4173)
+./scripts/run-frontend.sh production
+
+# custom host/port
+HOST=0.0.0.0 PORT=8080 ./scripts/run-frontend.sh production
+```
+
+### Frontend Script (PowerShell / Windows Server)
+```powershell
+# development mode (default port 5173)
+./scripts/run-frontend.ps1 -Environment development
+
+# production preview mode (default port 4173)
+./scripts/run-frontend.ps1 -Environment production
+
+# install dependencies first + custom host/port
+./scripts/run-frontend.ps1 -Environment production -InstallDependencies -BindHost 0.0.0.0 -Port 8080
+```
 
 ## Features
 

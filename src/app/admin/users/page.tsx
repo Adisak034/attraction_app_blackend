@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import DataTable from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
+import { confirmAction, showError, showSuccess } from '@/lib/swal';
 
 // Interface based on the 'user' table schema
 interface User {
@@ -28,6 +29,7 @@ export default function UserAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const closeAddModal = () => {
     setShowForm(false);
@@ -71,6 +73,10 @@ export default function UserAdminPage() {
       dom: 'lrtip',
     });
 
+    if (searchTerm.trim()) {
+      dataTableRef.current.search(searchTerm.trim()).draw();
+    }
+
     return () => {
       if (dataTableRef.current) {
         dataTableRef.current.destroy();
@@ -78,6 +84,17 @@ export default function UserAdminPage() {
       }
     };
   }, [loading, users]);
+
+  const handleSearch = () => {
+    if (!dataTableRef.current) return;
+    dataTableRef.current.search(searchTerm.trim()).draw();
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    if (!dataTableRef.current) return;
+    dataTableRef.current.search('').draw();
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -87,7 +104,7 @@ export default function UserAdminPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!formData.user_name.trim() || !formData.password.trim()) {
-        alert('Username and Password are required.');
+        await showError('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
         return;
     }
     try {
@@ -100,23 +117,24 @@ export default function UserAdminPage() {
       closeAddModal();
       await fetchUsers();
       navigate('/admin/users', { replace: true });
-      alert('User created successfully!');
+      await showSuccess('บันทึกสำเร็จ', `เพิ่มผู้ใช้ "${formData.user_name.trim()}" เรียบร้อยแล้ว`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
   };
 
-  const handleDelete = async (userId: number) => {
-    if (!confirm('Are you sure you want to delete this user?')) {
+  const handleDelete = async (userId: number, userName: string) => {
+    const isConfirmed = await confirmAction('ยืนยันการลบผู้ใช้', `ต้องการลบ "${userName}" ใช่หรือไม่?`);
+    if (!isConfirmed) {
       return;
     }
     try {
       await apiDelete(`/api/users/${userId}`);
 
       fetchUsers();
-      alert('User deleted successfully!');
+      await showSuccess('ลบสำเร็จ', `ลบผู้ใช้ "${userName}" เรียบร้อยแล้ว`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
   };
 
@@ -139,8 +157,9 @@ export default function UserAdminPage() {
 
       if (deleteButton) {
         const userId = Number(deleteButton.dataset.userId);
+        const userName = deleteButton.dataset.userName || `ID ${userId}`;
         if (Number.isFinite(userId)) {
-          handleDelete(userId);
+          handleDelete(userId, userName);
         }
       }
     };
@@ -217,6 +236,34 @@ export default function UserAdminPage() {
       <div className="border rounded-lg shadow-md bg-white overflow-hidden">
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Users</h2>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSearch();
+            }}
+            className="flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search users..."
+              className="w-56 p-2 border rounded-md text-sm"
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-blue-700"
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-semibold hover:bg-gray-300"
+            >
+              Clear
+            </button>
+          </form>
         </div>
         {error && <p className="text-red-500 mb-4 p-6">{error}</p>}
         {loading && <p className="text-gray-500 p-6">Loading...</p>}
@@ -241,7 +288,7 @@ export default function UserAdminPage() {
                   <td>
                     <div className="flex gap-2 justify-center">
                       <button type="button" className="edit-user-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm" data-user-id={user.user_id}>Edit</button>
-                      <button type="button" className="delete-user-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm" data-user-id={user.user_id}>Delete</button>
+                      <button type="button" className="delete-user-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm" data-user-id={user.user_id} data-user-name={user.user_name}>Delete</button>
                     </div>
                   </td>
                 </tr>

@@ -16,6 +16,8 @@
 /build
 
 # Python backend
+/.venv/
+/venv/
 backend/venv/
 backend/.venv/
 backend/__pycache__/
@@ -24,6 +26,7 @@ backend/.pytest_cache/
 backend/uploads/
 backend/public/uploads/*
 !backend/public/uploads/.gitkeep
+!backend/public/uploads/mockup.png
 backend/.env
 *.egg-info/
 __pycache__/
@@ -33,6 +36,8 @@ __pycache__/
 # Uploaded files
 public/uploads/*
 !public/uploads/.gitkeep
+!public/uploads/mockup.png
+!mockup.png
 
 # Testing
 /coverage
@@ -50,6 +55,8 @@ yarn-error.log*
 .env.local
 .env.*.local
 .env*
+!.env.example
+!backend/.env.example
 
 # IDE & Editor
 .vscode/

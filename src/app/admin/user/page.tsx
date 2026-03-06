@@ -25,7 +25,7 @@ export default function AdminUserBlockedPage() {
           <button
             onClick={() => {
               clearAuthSession();
-              navigate('/admin/login', { replace: true });
+              navigate('/', { replace: true });
             }}
             className="w-full bg-gray-100 text-gray-700 py-2 rounded-md font-semibold hover:bg-gray-200"
           >

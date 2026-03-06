@@ -34,13 +34,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files for uploads
-if not os.path.exists("public"):
-    os.makedirs("public")
-if not os.path.exists("public/uploads"):
-    os.makedirs("public/uploads")
+# Mount static files for uploads (project-root/public/uploads)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+UPLOADS_DIR = os.path.join(PROJECT_ROOT, "public", "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
-app.mount("/uploads", StaticFiles(directory="public/uploads"), name="uploads")
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Include routers
 app.include_router(attractions.router)

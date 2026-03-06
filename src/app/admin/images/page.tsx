@@ -1,14 +1,14 @@
-import { useState, useEffect, FormEvent, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import DataTable from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
-import { apiGet, apiPost, apiDelete, apiUploadFile } from '@/lib/apiClient';
+import { apiGet } from '@/lib/apiClient';
 
 interface AttractionWithImage {
   attraction_id: number;
   attraction_name: string;
-  attraction_image: string;
+  attraction_image: string | null;
 }
 
 interface Attraction {
@@ -18,16 +18,16 @@ interface Attraction {
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
-const resolveImageUrl = (url: string | null | undefined) => {
+const resolveImageUrl = (url: string | null | undefined, cacheBuster?: number) => {
   if (!url) return '';
-  if (/^https?:\/\//i.test(url) || url.startsWith('data:')) return url;
-  if (url.startsWith('/')) return `${API_BASE_URL}${url}`;
-  return `${API_BASE_URL}/${url}`;
-};
+  const fullUrl = /^https?:\/\//i.test(url) || url.startsWith('data:')
+    ? url
+    : url.startsWith('/')
+      ? `${API_BASE_URL}${url}`
+      : `${API_BASE_URL}/${url}`;
 
-const initialFormState = {
-  attraction_image: '',
-  attraction_id: '',
+  if (!cacheBuster) return fullUrl;
+  return `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}v=${cacheBuster}`;
 };
 
 export default function ImageAdminPage() {
@@ -36,56 +36,35 @@ export default function ImageAdminPage() {
   const dataTableRef = useRef<any>(null);
 
   const [images, setImages] = useState<AttractionWithImage[]>([]);
-  const [attractions, setAttractions] = useState<Attraction[]>([]);
-  const [formData, setFormData] = useState(initialFormState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const initialLoadDoneRef = useRef(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [imageVersion, setImageVersion] = useState<number>(Date.now());
 
-  const closeAddModal = () => {
-    setShowForm(false);
-    setFormData(initialFormState);
-    setSelectedFile(null);
-    setFilePreview(null);
-  };
-
-  const fetchData = async (showLoading = false) => {
+  const fetchData = async () => {
     try {
-      if (showLoading) {
-        setLoading(true);
-      }
+      setLoading(true);
       const imageData: Array<{ attraction_id: number; attraction_image: string }> = await apiGet('/api/image');
       const attractionData: Attraction[] = await apiGet('/api/attraction');
 
-      const nameMap = new Map(attractionData.map((item) => [item.attraction_id, item.attraction_name]));
-      const normalized: AttractionWithImage[] = imageData.map((item) => ({
+      const imageMap = new Map(imageData.map((item) => [item.attraction_id, item.attraction_image]));
+      const normalized: AttractionWithImage[] = attractionData.map((item) => ({
         attraction_id: item.attraction_id,
-        attraction_name: nameMap.get(item.attraction_id) || `Attraction #${item.attraction_id}`,
-        attraction_image: item.attraction_image,
+        attraction_name: item.attraction_name,
+        attraction_image: imageMap.get(item.attraction_id) || null,
       }));
 
       setImages(normalized);
-      setAttractions(attractionData);
-
-      if (attractionData.length > 0 && !formData.attraction_id) {
-        setFormData((prev) => ({ ...prev, attraction_id: String(attractionData[0].attraction_id) }));
-      }
+      setImageVersion(Date.now());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
-      if (showLoading || !initialLoadDoneRef.current) {
-        setLoading(false);
-        initialLoadDoneRef.current = true;
-      }
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData(true);
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -109,6 +88,10 @@ export default function ImageAdminPage() {
       dom: 'lrtip',
     });
 
+    if (searchTerm.trim()) {
+      dataTableRef.current.search(searchTerm.trim()).draw();
+    }
+
     return () => {
       if (dataTableRef.current) {
         dataTableRef.current.destroy();
@@ -117,70 +100,15 @@ export default function ImageAdminPage() {
     };
   }, [loading, images]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleSearch = () => {
+    if (!dataTableRef.current) return;
+    dataTableRef.current.search(searchTerm.trim()).draw();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFilePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!formData.attraction_id) {
-      alert('Attraction is required.');
-      return;
-    }
-
-    if (!selectedFile && !formData.attraction_image.trim()) {
-      alert('Please upload a file or provide an image URL.');
-      return;
-    }
-
-    try {
-      setUploading(true);
-      let imageUrl = formData.attraction_image;
-
-      if (selectedFile) {
-        const uploadResult = await apiUploadFile('/api/image/upload', selectedFile);
-        imageUrl = uploadResult.image_url;
-      }
-
-      await apiPost('/api/image', {
-        Image_name: imageUrl,
-        attraction_id: parseInt(formData.attraction_id, 10),
-      });
-
-      closeAddModal();
-      await fetchData(false);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDelete = async (attractionId: number, attractionName: string) => {
-    if (!confirm(`Delete image for "${attractionName}"?`)) {
-      return;
-    }
-
-    try {
-      await apiDelete(`/api/image/${attractionId}`);
-      setImages((prev) => prev.filter((item) => item.attraction_id !== attractionId));
-      await fetchData(false);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error deleting image');
-    }
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    if (!dataTableRef.current) return;
+    dataTableRef.current.search('').draw();
   };
 
   useEffect(() => {
@@ -190,21 +118,11 @@ export default function ImageAdminPage() {
     const handleTableClick = (event: Event) => {
       const target = event.target as HTMLElement;
       const editButton = target.closest('.edit-image-btn') as HTMLButtonElement | null;
-      const deleteButton = target.closest('.delete-image-btn') as HTMLButtonElement | null;
 
       if (editButton) {
         const attractionId = Number(editButton.dataset.attractionId);
         if (Number.isFinite(attractionId)) {
           navigate(`/admin/images/edit/${attractionId}`);
-        }
-        return;
-      }
-
-      if (deleteButton) {
-        const attractionId = Number(deleteButton.dataset.attractionId);
-        const attractionName = deleteButton.dataset.attractionName || 'Unknown';
-        if (Number.isFinite(attractionId)) {
-          handleDelete(attractionId, attractionName);
         }
       }
     };
@@ -227,107 +145,39 @@ export default function ImageAdminPage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Image Management</h1>
         </div>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setFormData({
-              ...initialFormState,
-              attraction_id: attractions.length > 0 ? String(attractions[0].attraction_id) : '',
-            });
-            setSelectedFile(null);
-            setFilePreview(null);
-          }}
-          className="bg-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-blue-700 font-semibold"
-        >
-          + Add Image
-        </button>
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Add New Image</h2>
-              <button onClick={closeAddModal} className="text-gray-500 hover:text-gray-700">✕</button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="attraction_id" className="block text-sm font-medium text-gray-700 mb-1">Attraction *</label>
-              <select
-                id="attraction_id"
-                name="attraction_id"
-                value={formData.attraction_id}
-                onChange={handleInputChange}
-                required
-                className="w-full p-2 border rounded-md shadow-sm"
-              >
-                <option value="" disabled>Select Attraction</option>
-                {attractions.map((att) => (
-                  <option key={att.attraction_id} value={att.attraction_id}>{att.attraction_name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="file" className="block text-sm font-medium text-gray-700 mb-1">Upload Image</label>
-                <input
-                  type="file"
-                  id="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  disabled={uploading}
-                  className="w-full p-2 border rounded-md shadow-sm"
-                />
-                <p className="text-xs text-gray-500 mt-1">Max size: 5MB. Formats: JPG, PNG, GIF, etc.</p>
-              </div>
-
-              <div>
-                <label htmlFor="attraction_image" className="block text-sm font-medium text-gray-700 mb-1">Or Image URL</label>
-                <input
-                  type="text"
-                  id="attraction_image"
-                  name="attraction_image"
-                  value={formData.attraction_image}
-                  onChange={handleInputChange}
-                  placeholder="https://example.com/image.jpg"
-                  disabled={uploading}
-                  className="w-full p-2 border rounded-md shadow-sm"
-                />
-              </div>
-            </div>
-
-            {filePreview && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-                <img src={filePreview} alt="Preview" className="max-w-xs h-auto rounded border" />
-              </div>
-            )}
-
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {uploading ? 'Uploading...' : 'Add Image'}
-                </button>
-                <button
-                  type="button"
-                  onClick={closeAddModal}
-                  className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       <div className="border rounded-lg shadow-md bg-white overflow-hidden">
-        <div className="p-6 border-b">
+        <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Images</h2>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSearch();
+            }}
+            className="flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search images..."
+              className="w-56 p-2 border rounded-md text-sm"
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-blue-700"
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-semibold hover:bg-gray-300"
+            >
+              Clear
+            </button>
+          </form>
         </div>
         <div className="overflow-x-auto p-4">
           {error && <p className="text-red-600 bg-red-50 p-4 rounded-md mb-4">{error}</p>}
@@ -339,7 +189,7 @@ export default function ImageAdminPage() {
                 <th>Name</th>
                 <th>Image Preview</th>
                 <th>Image URL</th>
-                <th>Actions</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -349,14 +199,14 @@ export default function ImageAdminPage() {
                   <td>{item.attraction_name}</td>
                   <td>
                     {item.attraction_image ? (
-                      <img src={resolveImageUrl(item.attraction_image)} alt="preview" className="w-[100px] h-[80px] object-cover rounded border border-gray-200" />
+                      <img src={resolveImageUrl(item.attraction_image, imageVersion)} alt="preview" className="w-[100px] h-[80px] object-cover rounded border border-gray-200" />
                     ) : (
                       <span className="text-gray-400">No image</span>
                     )}
                   </td>
                   <td>
                     {item.attraction_image ? (
-                      <a href={resolveImageUrl(item.attraction_image)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline text-sm">
+                      <a href={resolveImageUrl(item.attraction_image, imageVersion)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline text-sm">
                         {item.attraction_image.length > 40 ? `${item.attraction_image.slice(0, 40)}...` : item.attraction_image}
                       </a>
                     ) : (
@@ -366,7 +216,6 @@ export default function ImageAdminPage() {
                   <td>
                     <div className="flex gap-2">
                       <button type="button" className="edit-image-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm" data-attraction-id={item.attraction_id}>Edit</button>
-                      <button type="button" className="delete-image-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm" data-attraction-id={item.attraction_id} data-attraction-name={item.attraction_name}>Delete</button>
                     </div>
                   </td>
                 </tr>

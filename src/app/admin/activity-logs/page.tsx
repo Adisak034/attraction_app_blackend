@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import DataTable from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import { apiGet, apiDelete } from '@/lib/apiClient';
+import { confirmAction, showError, showInfo, showSuccess } from '@/lib/swal';
 
 interface ActivityLog {
   log_id: number;
@@ -34,6 +35,55 @@ export default function ActivityLogsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const escapeCsv = (value: string | number | null | undefined) => {
+    const text = String(value ?? '');
+    if (/[",\n]/.test(text)) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+
+  const handleExportCsv = () => {
+    if (logs.length === 0) {
+      void showInfo('ไม่มีข้อมูล', 'ไม่มีกิจกรรมสำหรับส่งออก');
+      return;
+    }
+
+    const headers = [
+      'log_id',
+      'user_id',
+      'user_name',
+      'attraction_id',
+      'attraction_name',
+      'action_type',
+      'created_at',
+    ];
+
+    const rows = logs.map((log) => [
+      log.log_id,
+      log.user_id,
+      log.user_name,
+      log.attraction_id,
+      log.attraction_name,
+      log.action_type,
+      log.created_at,
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCsv(cell)).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `activity-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const fetchData = async () => {
     try {
@@ -84,15 +134,20 @@ export default function ActivityLogsPage() {
     };
   }, [loading, logs]);
 
-  const handleDelete = async (logId: number) => {
-    if (!confirm('Are you sure you want to delete this activity log?')) {
+  const handleDelete = async (logId: number, userName: string, attractionName: string) => {
+    const subject = attractionName
+      ? `${userName} - ${attractionName}`
+      : userName || `Log #${logId}`;
+    const isConfirmed = await confirmAction('ยืนยันการลบกิจกรรม', `ต้องการลบรายการ "${subject}" ใช่หรือไม่?`);
+    if (!isConfirmed) {
       return;
     }
     try {
       await apiDelete(`/api/activity-logs/${logId}`);
       fetchData();
+      await showSuccess('ลบสำเร็จ', `ลบกิจกรรม "${subject}" เรียบร้อยแล้ว`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
   };
 
@@ -106,8 +161,10 @@ export default function ActivityLogsPage() {
       if (!deleteButton) return;
 
       const logId = Number(deleteButton.dataset.logId);
+      const userName = deleteButton.dataset.userName || '';
+      const attractionName = deleteButton.dataset.attractionName || '';
       if (!Number.isFinite(logId)) return;
-      handleDelete(logId);
+      handleDelete(logId, userName, attractionName);
     };
 
     tableElement.addEventListener('click', handleTableClick);
@@ -116,16 +173,24 @@ export default function ActivityLogsPage() {
 
   return (
     <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin')}
+            aria-label="ย้อนกลับ"
+            title="ย้อนกลับ"
+            className="h-10 w-10 flex items-center justify-center border rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">Activity Logs</h1>
+        </div>
         <button
-          onClick={() => navigate('/admin')}
-          aria-label="ย้อนกลับ"
-          title="ย้อนกลับ"
-          className="h-10 w-10 flex items-center justify-center border rounded-md text-gray-700 hover:bg-gray-50"
+          onClick={handleExportCsv}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-emerald-700 font-semibold"
         >
-          <ArrowLeft size={18} />
+          Export to CSV
         </button>
-        <h1 className="text-3xl font-bold text-gray-900">Activity Logs</h1>
       </div>
 
       {/* Statistics Section */}
@@ -217,6 +282,8 @@ export default function ActivityLogsPage() {
                         type="button"
                         className="delete-log-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
                         data-log-id={log.log_id}
+                        data-user-name={log.user_name || ''}
+                        data-attraction-name={log.attraction_name || ''}
                       >
                         Delete
                       </button>

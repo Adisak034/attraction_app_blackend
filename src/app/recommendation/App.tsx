@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Compass, MapPin, Star, Sparkles, Loader2, Heart, ArrowRight, User, Lock, LogIn, CheckCircle2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '@/lib/apiClient';
+import { clearAuthSession, getAuthSession, setAuthSession } from '@/lib/auth';
 import workBg from './assets/work_bg.png';
 import moneyBg from './assets/money_bg.png';
 import loveBg from './assets/love_bg.png';
@@ -60,11 +62,16 @@ const CATEGORY_FILTER_ALIASES: Record<'LOVE' | 'WEALTH' | 'CAREER', string[]> = 
 
 const BACKEND_BASE_URL = 'http://localhost:8000';
 
-const resolveImageUrl = (value?: string | null) => {
+const resolveImageUrl = (value?: string | null, cacheBuster?: number) => {
   if (!value) return undefined;
-  if (/^https?:\/\//i.test(value)) return value;
-  if (value.startsWith('/uploads/')) return `${BACKEND_BASE_URL}${value}`;
-  return value;
+  const appendCacheBuster = (url: string) => {
+    if (!cacheBuster) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}v=${cacheBuster}`;
+  };
+
+  if (/^https?:\/\//i.test(value)) return appendCacheBuster(value);
+  if (value.startsWith('/uploads/')) return appendCacheBuster(`${BACKEND_BASE_URL}${value}`);
+  return appendCacheBuster(value);
 };
 
 // Mystical Mandala Component
@@ -352,6 +359,7 @@ const RatingModal = ({
 };
 
 function App() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('selection');
   // const [selectedInterests, setSelectedInterests] = useState<string[]>([]); // Removed selection logic
   const [userId, setUserId] = useState('');
@@ -367,6 +375,8 @@ function App() {
   const [rememberMe, setRememberMe] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<Recommendation | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [isAdminSession, setIsAdminSession] = useState(false);
+  const [brokenImageIds, setBrokenImageIds] = useState<Set<string>>(new Set());
   // ratingTargetPlace: the place the user went to see on Google Maps
   const [ratingTargetPlace, setRatingTargetPlace] = useState<Recommendation | null>(null);
   // awaitingReturn: true while user is in Google Maps tab
@@ -381,6 +391,24 @@ function App() {
   useEffect(() => {
     const savedId = localStorage.getItem('faith_userId');
     const savedName = localStorage.getItem('faith_userName');
+    const session = getAuthSession();
+    setIsAdminSession(session?.role === 'admin');
+
+    if (session?.user_id && session?.user_name) {
+      const sessionId = String(session.user_id);
+      setUserId(sessionId);
+      setUserName(session.user_name);
+      setFormData(prev => ({ ...prev, name: session.user_name }));
+
+      if (savedId && savedName) {
+        setRememberMe(true);
+      }
+
+      // Keep user on logged-in flow after refresh when auth session exists.
+      fetchRecommendations(sessionId);
+      return;
+    }
+
     if (savedId && savedName) {
       setUserId(savedId);
       setUserName(savedName);
@@ -418,12 +446,15 @@ function App() {
         throw new Error(apiRecommendations.error);
       }
 
+      const cacheBuster = Date.now();
       const recommendations = Array.isArray(apiRecommendations?.recommendations)
         ? apiRecommendations.recommendations.map((item) => ({
             ...item,
-            image: resolveImageUrl(item.image) || item.image,
+            image: resolveImageUrl(item.image, cacheBuster) || item.image,
           }))
         : [];
+
+      setBrokenImageIds(new Set());
 
       if (recommendations.length === 0) {
         setError('ไม่พบข้อมูลคำแนะนำจากระบบ');
@@ -472,6 +503,12 @@ function App() {
       const uId = String(created.user_id);
       setUserId(uId);
       setUserName(created.user_name);
+      setAuthSession({
+        user_id: created.user_id,
+        user_name: created.user_name,
+        role: 'user',
+      });
+      setIsAdminSession(false);
       if (rememberMe) {
         localStorage.setItem('faith_userId', uId);
         localStorage.setItem('faith_userName', created.user_name);
@@ -497,7 +534,7 @@ function App() {
         return;
       }
 
-      const users = await apiGet('/api/users') as Array<{ user_id: number; user_name: string; password: string }>;
+      const users = await apiGet('/api/users') as Array<{ user_id: number; user_name: string; password: string; role?: string }>;
       const matched = users.find((item) => item.user_name.toLowerCase() === inputName.toLowerCase());
 
       if (!matched || matched.password !== formData.password) {
@@ -506,8 +543,15 @@ function App() {
       }
 
       const uId = String(matched.user_id);
+      const role = matched.role || 'user';
       setUserId(uId);
       setUserName(matched.user_name);
+      setAuthSession({
+        user_id: matched.user_id,
+        user_name: matched.user_name,
+        role,
+      });
+      setIsAdminSession(role === 'admin');
       if (rememberMe) {
         localStorage.setItem('faith_userId', uId);
         localStorage.setItem('faith_userName', matched.user_name);
@@ -719,9 +763,19 @@ function App() {
               </div>
 
               <div className="flex items-center gap-4">
+                {isAdminSession && (
+                  <button
+                    onClick={() => navigate('/admin')}
+                    className="px-6 py-2 bg-faith-gold hover:bg-amber-400 text-[#1A0404] rounded-full text-xs font-black uppercase tracking-widest transition-all border border-faith-gold"
+                  >
+                    ไปหน้า Admin
+                  </button>
+                )}
                 <button onClick={() => {
                   localStorage.removeItem('faith_userId');
                   localStorage.removeItem('faith_userName');
+                  clearAuthSession();
+                  setIsAdminSession(false);
                   setUserId('');
                   setUserName('');
                   setRecommendations([]);
@@ -824,10 +878,24 @@ function App() {
                     >
                       {/* Card Image Area */}
                       <div className="h-56 relative overflow-hidden group/img">
-                        <div
-                          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover/img:scale-110"
-                          style={{ backgroundImage: `url(${item.image || workBg})` }}
-                        />
+                        {item.image && !brokenImageIds.has(item.id) ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110"
+                            onError={() => {
+                              setBrokenImageIds((prev) => {
+                                const next = new Set(prev);
+                                next.add(item.id);
+                                return next;
+                              });
+                            }}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white/70 text-sm font-bold tracking-wider">
+                            NO IMAGE
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-[#1A0404] via-[#1A0404]/40 to-transparent" />
 
 
@@ -913,79 +981,77 @@ function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#1A0404] border border-faith-gold/30 rounded-[2rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto relative shadow-2xl"
+              className="bg-[#1A0404] border border-faith-gold/30 rounded-[1.5rem] sm:rounded-[2rem] max-w-2xl w-full h-[92vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto relative shadow-2xl"
               onClick={e => e.stopPropagation()}
             >
               <button
                 onClick={() => setSelectedPlace(null)}
-                className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-gray-400 hover:text-white transition-colors z-10"
+                className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-gray-300 hover:text-white transition-colors z-20"
               >
                 <X size={24} />
               </button>
 
-              <div className="relative h-64 md:h-80">
-                {selectedPlace.image ? (
-                  <img src={selectedPlace.image} alt={selectedPlace.name} className="w-full h-full object-cover" />
+              <div className="relative h-56 sm:h-64 md:h-72">
+                {selectedPlace.image && !brokenImageIds.has(selectedPlace.id) ? (
+                  <img
+                    src={selectedPlace.image}
+                    alt={selectedPlace.name}
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                      setBrokenImageIds((prev) => {
+                        const next = new Set(prev);
+                        next.add(selectedPlace.id);
+                        return next;
+                      });
+                    }}
+                  />
                 ) : (
                   <div className="w-full h-full bg-faith-gold/10 flex items-center justify-center">
-                    <span className="text-faith-gold/30 font-black text-4xl">ไม่มีรูปภาพ</span>
+                    <span className="text-faith-gold/30 font-black text-4xl">NO IMAGE</span>
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1A0404] via-transparent to-transparent" />
-                <div className="absolute bottom-6 left-6 right-6">
-                  <div className="flex gap-2 mb-2">
-                    <span className="px-3 py-1 bg-faith-gold/20 text-faith-gold text-xs font-bold rounded-full border border-faith-gold/20 uppercase tracking-wider backdrop-blur-md">
-                      {selectedPlace.type}
-                    </span>
-                    <span className="px-3 py-1 bg-white/10 text-white text-xs font-bold rounded-full border border-white/10 uppercase tracking-wider backdrop-blur-md">
-                      {selectedPlace.category}
-                    </span>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1A0404] via-[#1A0404]/35 to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4 z-10">
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {[selectedPlace.type, ...selectedPlace.category.split(',').map((item) => item.trim()).filter(Boolean)].slice(0, 3).map((chip, index) => (
+                      <span
+                        key={`${chip}-${index}`}
+                        className="px-3 py-1.5 bg-faith-gold/85 text-[#1A0404] text-xs font-black rounded-xl tracking-wide"
+                      >
+                        {chip}
+                      </span>
+                    ))}
                   </div>
-                  <h2 className="text-4xl md:text-5xl font-black text-white leading-none drop-shadow-lg">{selectedPlace.name}</h2>
+                  <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight drop-shadow-lg line-clamp-2">{selectedPlace.name}</h2>
                 </div>
               </div>
 
-              <div className="p-8 space-y-8">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                    <div className="flex items-center gap-2 mb-2 text-faith-gold">
-                      <Star size={18} />
-                      <span className="font-bold text-xs uppercase tracking-widest">Score</span>
-                    </div>
-                    <span className="text-2xl font-black text-white">{selectedPlace.score.toFixed(2)}</span>
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+                <div className="bg-[#5F2B2B] border border-white/15 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3 text-faith-gold">
+                    <Star size={18} fill="currentColor" />
+                    <span className="font-black text-lg">คะแนนรวม</span>
                   </div>
-                  <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                    <div className="flex items-center gap-2 mb-2 text-faith-gold">
-                      <Compass size={18} />
-                      <span className="font-bold text-xs uppercase tracking-widest">พิกัดสถานที่</span>
-                    </div>
-                    <span className="text-sm font-mono text-gray-400">{selectedPlace.lat.toFixed(4)}, {selectedPlace.lng.toFixed(4)}</span>
-                  </div>
+                  <span className="text-4xl sm:text-5xl font-black text-white leading-none">{selectedPlace.score.toFixed(2)}</span>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-faith-gold/10 rounded-xl text-faith-gold shrink-0">
-                      <Sparkles size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white mb-1">สิ่งศักดิ์สิทธิ์ (Sacred Object)</h3>
-                      <p className="text-gray-400 leading-relaxed">{selectedPlace.sacred_object || "ไม่ระบุข้อมูล"}</p>
-                    </div>
+                <div className="bg-[#5F2B2B] border border-white/15 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3 text-faith-gold">
+                    <Sparkles size={18} />
+                    <span className="font-black text-2xl">สิ่งศักดิ์สิทธิ์</span>
                   </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-faith-gold/10 rounded-xl text-faith-gold shrink-0">
-                      <Heart size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white mb-1">ของไหว้ (Offerings)</h3>
-                      <p className="text-gray-400 leading-relaxed">{selectedPlace.offerings || "ไม่ระบุข้อมูล"}</p>
-                    </div>
-                  </div>
+                  <p className="text-white text-base sm:text-lg leading-snug">{selectedPlace.sacred_object || 'ไม่ระบุข้อมูล'}</p>
                 </div>
 
-                <div className="w-full h-64 rounded-2xl overflow-hidden mb-4 border border-faith-gold/30">
+                <div className="bg-[#5F2B2B] border border-white/15 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3 text-faith-gold">
+                    <Heart size={18} />
+                    <span className="font-black text-2xl">ของไหว้</span>
+                  </div>
+                  <p className="text-white text-base sm:text-lg leading-snug">{selectedPlace.offerings || 'ไม่ระบุข้อมูล'}</p>
+                </div>
+
+                <div className="w-full h-48 sm:h-56 rounded-2xl overflow-hidden border border-white/20">
                   <PlaceMap recommendations={[selectedPlace]} className="h-full" />
                 </div>
 
@@ -999,7 +1065,7 @@ function App() {
                     setAwaitingReturn(true);
                     window.open(mapUrl, '_blank', 'noopener,noreferrer');
                   }}
-                  className="flex items-center justify-center gap-2 w-full py-4 bg-faith-gold text-[#1A0404] font-black rounded-xl hover:bg-amber-400 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full py-4 bg-faith-gold text-[#1A0404] font-black rounded-2xl hover:bg-amber-400 transition-colors text-base sm:text-lg"
                 >
                   <MapPin size={20} />
                   <span>เปิดในแผนที่ GOOGLE MAPS</span>
