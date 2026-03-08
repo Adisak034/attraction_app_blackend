@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Compass, MapPin, Star, Sparkles, Loader2, Heart, ArrowRight, User, Lock, LogIn, CheckCircle2, X } from 'lucide-react';
+import { Compass, MapPin, Star, Sparkles, Loader2, Heart, ArrowRight, User, Lock, LogIn, CheckCircle2, X, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '@/lib/apiClient';
@@ -569,7 +569,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col text-white selection:bg-faith-gold/30 font-outfit overflow-x-hidden">
+    <div className={`min-h-screen flex flex-col text-white selection:bg-faith-gold/30 font-outfit overflow-x-hidden ${(step === 'register' || step === 'login') ? 'overflow-y-hidden' : ''}`}>
       <DivineBackground currentBgIndex={currentBg} backgrounds={backgrounds} />
 
       <div className="flex-1">
@@ -586,14 +586,14 @@ function App() {
               <motion.button
                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 onClick={() => setStep('login')}
-                className="bg-white/10 text-white px-6 py-2.5 rounded-full font-bold border border-white/10 hover:bg-white/20 transition-all flex items-center gap-2 backdrop-blur-md"
+                className="bg-white/10 text-white px-6 py-2.5 sm:px-5 sm:py-2 rounded-full font-bold text-sm sm:text-xs border border-white/10 hover:bg-white/20 transition-all flex items-center gap-2 backdrop-blur-md"
               >
                 <LogIn size={18} /> เข้าสู่ระบบ
               </motion.button>
             </nav>
 
             <div className="flex-1 flex flex-col justify-center items-center text-center relative z-20">
-              <div className="mb-8 flex justify-center items-center gap-3">
+              <div className="mb-20 flex justify-center items-center gap-3">
                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }}>
                   <Sparkles className="text-faith-gold" size={24} />
                 </motion.div>
@@ -605,11 +605,9 @@ function App() {
 
               <motion.h1
                 initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }}
-                className="text-6xl md:text-9xl font-black mb-6 gold-gradient-text tracking-tight leading-normal drop-shadow-2xl overflow-visible"
+                className="text-6xl md:text-9xl font-black mb-12 gold-gradient-text tracking-tight leading-normal drop-shadow-2xl overflow-visible"
               >
                 สถานที่สายมูในนครปฐม
-                <br />
-                <span className="text-white text-4xl md:text-6xl opacity-90 tracking-widest block mt-4 pb-6 leading-tight drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">นครปฐม</span>
               </motion.h1>
 
               <motion.h2
@@ -630,7 +628,7 @@ function App() {
                 whileHover={{ scale: 1.05, boxShadow: "0 0 40px rgba(212, 175, 55, 0.4)" }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setStep('register')}
-                className="bg-faith-gold hover:bg-amber-400 text-[#1A0404] px-12 py-5 rounded-full font-black text-xl shadow-[0_0_20px_rgba(212,175,55,0.2)] transition-all flex items-center gap-3 mb-20 group"
+                className="bg-faith-gold hover:bg-amber-400 text-[#1A0404] px-8 py-4 sm:px-4 sm:py-1.5 rounded-full font-black text-lg sm:text-xs shadow-[0_0_20px_rgba(212,175,55,0.2)] transition-all flex items-center gap-3 mb-20 group"
               >
                 <Sparkles size={24} className="group-hover:rotate-12 transition-transform" />
                 เริ่มต้นเส้นทางศรัทธา
@@ -646,100 +644,109 @@ function App() {
           <motion.div
             key="auth"
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }}
-            className="max-w-md mx-auto px-6 py-20 relative z-10"
+            className="w-full h-full px-4 sm:px-4 relative z-10 min-h-screen flex flex-col justify-center items-center"
           >
-            <div className="glass-card rounded-[3rem] p-12 border border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)]">
-              <div className="text-center mb-12">
+            <div className="glass-card rounded-2xl sm:rounded-[3rem] p-6 sm:px-10 sm:py-7 border border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-lg sm:max-w-xl">
+              <div className="text-center mb-8 sm:mb-7">
                 <motion.div
                   initial={{ rotateY: 0 }} animate={{ rotateY: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                  className="w-20 h-20 bg-faith-gold rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-amber-500/30 text-[#1A0404]"
+                  className="w-16 h-16 sm:w-14 sm:h-14 bg-faith-gold rounded-2xl sm:rounded-2xl flex items-center justify-center mx-auto mb-6 sm:mb-5 shadow-2xl shadow-amber-500/30 text-[#1A0404]"
                 >
-                  {step === 'register' ? <User size={40} /> : <LogIn size={40} />}
+                  {step === 'register' ? <User size={32} className="sm:hidden" /> : <LogIn size={32} className="sm:hidden" />}
+                  {step === 'register' ? <User size={26} className="hidden sm:block" /> : <LogIn size={26} className="hidden sm:block" />}
                 </motion.div>
-                <h2 className="text-3xl font-black mb-3 gold-gradient-text uppercase tracking-tight">{step === 'register' ? 'ลงทะเบียน' : 'ยินดีต้อนรับกลับมา'}</h2>
-                <p className="text-gray-400 text-sm font-medium">ร่วมเดินทางสู่เส้นทางแห่งศรัทธา</p>
+                <h2 className="text-2xl sm:text-2xl font-black mb-2 sm:mb-2 gold-gradient-text uppercase tracking-tight">{step === 'register' ? 'ลงทะเบียน' : 'ยินดีต้อนรับกลับมา'}</h2>
+                <p className="text-gray-400 text-xs sm:text-xs font-medium">ร่วมเดินทางสู่เส้นทางแห่งศรัทธา</p>
               </div>
 
-              <form onSubmit={step === 'register' ? handleRegister : handleLogin} className="space-y-6">
+              <form onSubmit={step === 'register' ? handleRegister : handleLogin} className="space-y-4 sm:space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-faith-gold/80 pl-1">ชื่อผู้ใช้</label>
+                  <label className="text-xs sm:text-sm font-semibold text-faith-gold/80 pl-1">ชื่อผู้ใช้</label>
                   <div className="relative">
-                    <User className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none" size={18} />
+                    <User className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none" size={16} />
                     <input
                       type="text" required placeholder="กรอกชื่อผู้ใช้"
-                      className="w-full text-sm bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
+                      className="w-full text-xs sm:text-sm bg-black/40 border border-white/10 rounded-xl sm:rounded-2xl py-3 sm:py-4 pl-12 sm:pl-14 pr-4 sm:pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
                       value={formData.name}
                       onChange={e => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
                 </div>
 
-
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-faith-gold/80 pl-1">รหัสผ่าน</label>
+                  <label className="text-xs sm:text-sm font-semibold text-faith-gold/80 pl-1">รหัสผ่าน</label>
                   <div className="relative">
-                    <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none" size={18} />
+                    <Lock className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none" size={16} />
                     <input
                       type={showPassword ? "text" : "password"} required placeholder="รหัสผ่านของคุณ"
-                      className="w-full text-sm bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
+                      className="w-full text-xs sm:text-sm bg-black/40 border border-white/10 rounded-xl sm:rounded-2xl py-3 sm:py-4 pl-12 sm:pl-14 pr-20 sm:pr-24 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
                       value={formData.password}
                       onChange={e => setFormData({ ...formData, password: e.target.value })}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-faith-gold hover:text-amber-300 transition-colors"
+                      aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
 
                 {step === 'register' && (
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-faith-gold/80 pl-1">ยืนยันรหัสผ่าน</label>
+                    <label className="text-xs sm:text-sm font-semibold text-faith-gold/80 pl-1">ยืนยันรหัสผ่าน</label>
                     <div className="relative">
-                      <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none" size={18} />
+                      <Lock className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none" size={16} />
                       <input
                         type={showPassword ? "text" : "password"} required placeholder="ยืนยันรหัสผ่าน"
-                        className="w-full text-sm bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
+                        className="w-full text-xs sm:text-sm bg-black/40 border border-white/10 rounded-xl sm:rounded-2xl py-3 sm:py-4 pl-12 sm:pl-14 pr-20 sm:pr-24 focus:border-faith-gold transition-all outline-none backdrop-blur-xl"
                         value={formData.confirmPassword}
                         onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-faith-gold hover:text-amber-300 transition-colors"
+                        aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 px-1 cursor-pointer group" onClick={() => setShowPassword(!showPassword)}>
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${showPassword ? 'bg-faith-gold border-faith-gold' : 'border-white/20'}`}>
-                    {showPassword && <CheckCircle2 size={12} className="text-black" />}
+                <div className="flex items-center gap-2 sm:gap-3 px-1 cursor-pointer group" onClick={() => setRememberMe(!rememberMe)}>
+                  <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-faith-gold border-faith-gold' : 'border-white/20'}`}>
+                    {rememberMe && <CheckCircle2 size={14} className="sm:size-16 text-black" />}
                   </div>
-                  <span className="text-xs text-gray-300 font-medium group-hover:text-white transition-colors">แสดงรหัสผ่าน</span>
+                  <span className="text-xs sm:text-sm text-gray-300 font-medium group-hover:text-white transition-colors">จดจำบัญชีในอุปกรณ์นี้</span>
                 </div>
 
-                <div className="flex items-center gap-3 px-1 cursor-pointer group" onClick={() => setRememberMe(!rememberMe)}>
-                  <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-faith-gold border-faith-gold' : 'border-white/20'}`}>
-                    {rememberMe && <CheckCircle2 size={16} className="text-black" />}
-                  </div>
-                  <span className="text-sm text-gray-300 font-medium group-hover:text-white transition-colors">จดจำบัญชีในอุปกรณ์นี้</span>
-                </div>
-
-                {error && <p className="text-red-400 text-xs text-center font-bold bg-red-950/40 py-3 rounded-2xl border border-red-900/50">{error}</p>}
+                {error && <p className="text-red-400 text-xs text-center font-bold bg-red-950/40 py-2 sm:py-3 rounded-xl sm:rounded-2xl border border-red-900/50">{error}</p>}
 
                 <motion.button
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   type="submit" disabled={loading}
-                  className="w-full bg-faith-gold hover:bg-amber-400 text-[#1A0404] py-5 rounded-2xl font-black text-xl transition-all shadow-2xl shadow-amber-600/30 flex items-center justify-center gap-3"
+                  className="w-full bg-faith-gold hover:bg-amber-400 text-[#1A0404] py-3 sm:py-2.5 rounded-xl sm:rounded-2xl font-black text-base sm:text-base transition-all shadow-2xl shadow-amber-600/30 flex items-center justify-center gap-2"
                 >
-                  {loading ? <Loader2 className="animate-spin" size={24} /> : (
-                    <>{step === 'register' ? 'ลงทะเบียน' : 'เข้าสู่ระบบ'} <ArrowRight size={20} /></>
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : (
+                    <>{step === 'register' ? 'ลงทะเบียน' : 'เข้าสู่ระบบ'} <ArrowRight size={18} className="sm:size-5" /></>
                   )}
                 </motion.button>
               </form>
 
-              <p className="mt-10 text-center text-sm text-gray-400">
+              <p className="mt-6 sm:mt-6 text-center text-xs sm:text-sm text-gray-400">
                 {step === 'register' ? 'มีบัญชีอยู่แล้ว?' : 'เพิ่งเคยมาที่นี่ครั้งแรก?'} <button type="button" onClick={() => setStep(step === 'register' ? 'login' : 'register')} className="text-faith-gold hover:underline underline-offset-4 ml-1 font-semibold">{step === 'register' ? 'เข้าสู่ระบบ' : 'ลงทะเบียน'}</button>
               </p>
             </div>
 
             <button
               onClick={() => setStep('selection')}
-              className="mt-8 text-gray-400 hover:text-faith-gold text-sm w-full transition-all font-semibold"
+              className="mt-4 sm:mt-5 text-gray-400 hover:text-faith-gold text-xs sm:text-sm w-full transition-all font-semibold"
             >
-              ← ยกเลิกและกลับหน้าหลัก
+              ← กลับหน้าหลัก
             </button>
           </motion.div>
         )}
@@ -974,24 +981,24 @@ function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm"
             onClick={() => setSelectedPlace(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#1A0404] border border-faith-gold/30 rounded-[1.5rem] sm:rounded-[2rem] max-w-2xl w-full h-[92vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto relative shadow-2xl"
+              className="bg-[#1A0404] border border-faith-gold/30 rounded-t-[1.5rem] sm:rounded-[2rem] max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto desktop-no-scrollbar relative shadow-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
               onClick={e => e.stopPropagation()}
             >
               <button
                 onClick={() => setSelectedPlace(null)}
-                className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-gray-300 hover:text-white transition-colors z-20"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2.5 bg-black/50 rounded-full text-gray-300 hover:text-white transition-colors z-20"
               >
                 <X size={24} />
               </button>
 
-              <div className="relative h-56 sm:h-64 md:h-72">
+              <div className="relative h-44 sm:h-64 md:h-72">
                 {selectedPlace.image && !brokenImageIds.has(selectedPlace.id) ? (
                   <img
                     src={selectedPlace.image}
@@ -1011,47 +1018,47 @@ function App() {
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#1A0404] via-[#1A0404]/35 to-transparent" />
-                <div className="absolute bottom-4 left-4 right-4 z-10">
-                  <div className="flex flex-wrap gap-2 mb-3">
+                <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 z-10">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                     {[selectedPlace.type, ...selectedPlace.category.split(',').map((item) => item.trim()).filter(Boolean)].slice(0, 3).map((chip, index) => (
                       <span
                         key={`${chip}-${index}`}
-                        className="px-3 py-1.5 bg-faith-gold/85 text-[#1A0404] text-xs font-black rounded-xl tracking-wide"
+                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-faith-gold/85 text-[#1A0404] text-[10px] sm:text-xs font-black rounded-lg sm:rounded-xl tracking-wide"
                       >
                         {chip}
                       </span>
                     ))}
                   </div>
-                  <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight drop-shadow-lg line-clamp-2">{selectedPlace.name}</h2>
+                  <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight drop-shadow-lg line-clamp-2">{selectedPlace.name}</h2>
                 </div>
               </div>
 
-              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                <div className="bg-[#5F2B2B] border border-white/15 rounded-2xl p-5">
-                  <div className="flex items-center gap-2 mb-3 text-faith-gold">
+              <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
+                <div className="bg-[#5F2B2B] border border-white/15 rounded-2xl p-4 sm:p-5">
+                  <div className="flex items-center gap-2 mb-2 sm:mb-3 text-faith-gold">
                     <Star size={18} fill="currentColor" />
-                    <span className="font-black text-lg">คะแนนรวม</span>
+                    <span className="font-black text-base sm:text-lg">คะแนนรวม</span>
                   </div>
-                  <span className="text-4xl sm:text-5xl font-black text-white leading-none">{selectedPlace.score.toFixed(2)}</span>
+                  <span className="text-3xl sm:text-5xl font-black text-white leading-none">{selectedPlace.score.toFixed(2)}</span>
                 </div>
 
-                <div className="bg-[#5F2B2B] border border-white/15 rounded-2xl p-5">
-                  <div className="flex items-center gap-2 mb-3 text-faith-gold">
+                <div className="bg-[#5F2B2B] border border-white/15 rounded-2xl p-4 sm:p-5">
+                  <div className="flex items-center gap-2 mb-2 sm:mb-3 text-faith-gold">
                     <Sparkles size={18} />
-                    <span className="font-black text-2xl">สิ่งศักดิ์สิทธิ์</span>
+                    <span className="font-black text-xl sm:text-2xl">สิ่งศักดิ์สิทธิ์</span>
                   </div>
-                  <p className="text-white text-base sm:text-lg leading-snug">{selectedPlace.sacred_object || 'ไม่ระบุข้อมูล'}</p>
+                  <p className="text-white text-sm sm:text-lg leading-snug">{selectedPlace.sacred_object || 'ไม่ระบุข้อมูล'}</p>
                 </div>
 
-                <div className="bg-[#5F2B2B] border border-white/15 rounded-2xl p-5">
-                  <div className="flex items-center gap-2 mb-3 text-faith-gold">
+                <div className="bg-[#5F2B2B] border border-white/15 rounded-2xl p-4 sm:p-5">
+                  <div className="flex items-center gap-2 mb-2 sm:mb-3 text-faith-gold">
                     <Heart size={18} />
-                    <span className="font-black text-2xl">ของไหว้</span>
+                    <span className="font-black text-xl sm:text-2xl">ของไหว้</span>
                   </div>
-                  <p className="text-white text-base sm:text-lg leading-snug">{selectedPlace.offerings || 'ไม่ระบุข้อมูล'}</p>
+                  <p className="text-white text-sm sm:text-lg leading-snug">{selectedPlace.offerings || 'ไม่ระบุข้อมูล'}</p>
                 </div>
 
-                <div className="w-full h-48 sm:h-56 rounded-2xl overflow-hidden border border-white/20">
+                <div className="w-full h-44 sm:h-56 rounded-2xl overflow-hidden border border-white/20">
                   <PlaceMap recommendations={[selectedPlace]} className="h-full" />
                 </div>
 
@@ -1065,9 +1072,9 @@ function App() {
                     setAwaitingReturn(true);
                     window.open(mapUrl, '_blank', 'noopener,noreferrer');
                   }}
-                  className="flex items-center justify-center gap-2 w-full py-4 bg-faith-gold text-[#1A0404] font-black rounded-2xl hover:bg-amber-400 transition-colors text-base sm:text-lg"
+                  className="flex items-center justify-center gap-2 w-full py-3.5 sm:py-4 bg-faith-gold text-[#1A0404] font-black rounded-2xl hover:bg-amber-400 transition-colors text-sm sm:text-lg"
                 >
-                  <MapPin size={20} />
+                  <MapPin size={18} />
                   <span>เปิดในแผนที่ GOOGLE MAPS</span>
                 </motion.button>
               </div>
@@ -1077,7 +1084,7 @@ function App() {
       </AnimatePresence>
 
       {/* Footer Branding */}
-      {step !== 'results' && (
+      {step === 'selection' && (
         <footer className="py-12 text-center text-xs font-semibold text-gray-500 relative z-10 pointer-events-none">
           © 2026 Nakornpathom Faith Experience • AI Recommendation System
         </footer>
