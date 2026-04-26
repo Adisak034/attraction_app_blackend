@@ -28,6 +28,7 @@ app.add_middleware(
         "http://127.0.0.1:4173",
         "http://127.0.0.1:5173",
         "http://localhost",
+        "https://super-dollop-q7v6qpr95v54hxwqx-4173.app.github.dev"
     ],
     allow_credentials=True,
     allow_methods=["*"],

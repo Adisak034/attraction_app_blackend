@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 
 // Create axios instance with base URL
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://super-dollop-q7v6qpr95v54hxwqx-8000.app.github.dev';
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
