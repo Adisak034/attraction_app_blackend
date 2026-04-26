@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { clearAuthSession, getAuthSession } from '@/lib/auth';
 
-export default function AdminUserBlockedPage() {
+export default function PermissionDeniedPage() {
   const navigate = useNavigate();
   const session = getAuthSession();
 

@@ -4,7 +4,7 @@ export type AuthSession = {
   role: string;
 };
 
-const AUTH_STORAGE_KEY = 'temple_auth_session';
+const AUTH_STORAGE_KEY = 'auth_session';
 
 export function getAuthSession(): AuthSession | null {
   const raw = localStorage.getItem(AUTH_STORAGE_KEY);

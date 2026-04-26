@@ -8,6 +8,8 @@ import workBg from './assets/work_bg.png';
 import moneyBg from './assets/money_bg.png';
 import loveBg from './assets/love_bg.png';
 import PlaceMap from './components/Map';
+import UserMenu from './components/UserMenu';
+import ReviewHistory from './components/ReviewHistory';
 
 interface Recommendation {
   id: string;
@@ -22,7 +24,7 @@ interface Recommendation {
   offerings?: string;
 }
 
-type Step = 'selection' | 'register' | 'login' | 'results';
+type Step = 'selection' | 'register' | 'login' | 'results' | 'review';
 
 interface AttractionApi {
   attraction_id: number;
@@ -778,21 +780,20 @@ function App() {
                     ไปหน้า Admin
                   </button>
                 )}
-                <button onClick={() => {
-                  localStorage.removeItem('faith_userId');
-                  localStorage.removeItem('faith_userName');
-                  clearAuthSession();
-                  setIsAdminSession(false);
-                  setUserId('');
-                  setUserName('');
-                  setRecommendations([]);
-                  setStep('selection');
-                }}
-                  className="px-6 py-2 bg-white/10 hover:bg-faith-gold text-white hover:text-[#1A0404] rounded-full text-xs font-black uppercase tracking-widest transition-all backdrop-blur-md border border-white/20 hover:border-faith-gold group"
-                >
-                  <span className="hidden sm:inline">{userName ? `ผู้ใช้: ${userName.substring(0, 8)}` : 'ออกจากระบบ'}</span>
-                  <LogIn size={14} className="inline sm:hidden" />
-                </button>
+                <UserMenu
+                  userName={userName}
+                  onViewHistory={() => setStep('review')}
+                  onLogout={() => {
+                    localStorage.removeItem('faith_userId');
+                    localStorage.removeItem('faith_userName');
+                    clearAuthSession();
+                    setIsAdminSession(false);
+                    setUserId('');
+                    setUserName('');
+                    setRecommendations([]);
+                    setStep('selection');
+                  }}
+                />
               </div>
             </nav>
 
@@ -823,24 +824,8 @@ function App() {
                   <span className="text-faith-gold">สถานที่</span> <span className="text-white">แนะนำสำหรับคุณ</span>
                 </h3>
 
-                {/* Filter Buttons */}
-                <div className="flex items-center w-[85%] sm:w-auto justify-between sm:justify-center overflow-x-auto no-scrollbar gap-1 sm:gap-4 p-1 rounded-full border border-white/10 bg-black/60 backdrop-blur-md">
-                  <button
-                    onClick={() => { setActiveCategory('LOVE'); setCurrentBg(2); }}
-                    className={`flex-1 sm:flex-none px-4 md:px-8 py-2 md:py-3 rounded-full text-[10px] md:text-sm font-black uppercase tracking-widest transition-colors whitespace-nowrap ${activeCategory === 'LOVE' ? 'bg-faith-gold text-[#1A0404]' : 'text-white hover:text-faith-gold'}`}>
-                    ความรัก
-                  </button>
-                  <button
-                    onClick={() => { setActiveCategory('WEALTH'); setCurrentBg(1); }}
-                    className={`flex-1 sm:flex-none px-4 md:px-8 py-2 md:py-3 rounded-full text-[10px] md:text-sm font-black uppercase tracking-widest transition-colors whitespace-nowrap ${activeCategory === 'WEALTH' ? 'bg-faith-gold text-[#1A0404]' : 'text-white hover:text-faith-gold'}`}>
-                    การเงิน
-                  </button>
-                  <button
-                    onClick={() => { setActiveCategory('CAREER'); setCurrentBg(0); }}
-                    className={`flex-1 sm:flex-none px-4 md:px-8 py-2 md:py-3 rounded-full text-[10px] md:text-sm font-black uppercase tracking-widest transition-colors whitespace-nowrap ${activeCategory === 'CAREER' ? 'bg-faith-gold text-[#1A0404]' : 'text-white hover:text-faith-gold'}`}>
-                    การงาน
-                  </button>
-                </div>
+              {/* Filter Buttons - REMOVED */}
+              {/* Display all recommendations without category filtering */}
               </div>
 
               {/* Error State with Retry */}
@@ -866,72 +851,93 @@ function App() {
                 </motion.div>
               )}
 
-              {/* Grid 3 top, 2 bottom centered */}
-              {!error && <div className="flex flex-wrap justify-center gap-6">
-                {recommendations
-                  .filter(item => {
-                    const aliases = CATEGORY_FILTER_ALIASES[activeCategory as 'LOVE' | 'WEALTH' | 'CAREER'];
-                    return aliases.some((label) => item.category.includes(label));
-                  })
-                  .sort((a, b) => b.score - a.score)
-                  .slice(0, 5)
-                  .map((item, index) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}
-                      whileHover={{ y: -10, boxShadow: "0 25px 50px -12px rgba(212,175,55,0.25)" }}
-                      className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] glass-card rounded-[2rem] overflow-hidden flex flex-col border border-white/10 hover:border-faith-gold/50 cursor-pointer transition-all"
-                      onClick={() => setSelectedPlace(item)}
-                    >
-                      {/* Card Image Area */}
-                      <div className="h-56 relative overflow-hidden group/img">
-                        {item.image && !brokenImageIds.has(item.id) ? (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110"
-                            onError={() => {
-                              setBrokenImageIds((prev) => {
-                                const next = new Set(prev);
-                                next.add(item.id);
-                                return next;
-                              });
-                            }}
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white/70 text-sm font-bold tracking-wider">
-                            NO IMAGE
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#1A0404] via-[#1A0404]/40 to-transparent" />
+              {/* Grid - Grouped by Category */}
+              {!error && (
+                <>
+                  {['ความรัก', 'การเงิน', 'การงาน'].map((categoryLabel) => {
+                    const aliases = CATEGORY_FILTER_ALIASES[
+                      categoryLabel === 'ความรัก' ? 'LOVE' :
+                      categoryLabel === 'การเงิน' ? 'WEALTH' :
+                      'CAREER'
+                    ];
+                    
+                    const filteredByCategory = recommendations
+                      .filter(item => aliases.some((label) => item.category.includes(label)))
+                      .sort((a, b) => b.score - a.score);
+                    
+                    if (filteredByCategory.length === 0) return null;
+                    
+                    return (
+                      <div key={categoryLabel} className="w-full mb-12">
+                        <h4 className="text-2xl md:text-3xl font-black text-faith-gold mb-6 uppercase tracking-tight">
+                          {categoryLabel === 'ความรัก'} 
+                          {categoryLabel === 'การเงิน'} 
+                          {categoryLabel === 'การงาน'} 
+                          {' '}{categoryLabel}
+                        </h4>
+                        <div className="flex flex-wrap justify-center gap-6">
+                          {filteredByCategory.slice(0, 5).map((item, index) => (
+                            <motion.div
+                              key={item.id}
+                              initial={{ opacity: 0, y: 30 }} 
+                              animate={{ opacity: 1, y: 0 }} 
+                              transition={{ delay: index * 0.1 }}
+                              whileHover={{ y: -10, boxShadow: "0 25px 50px -12px rgba(212,175,55,0.25)" }}
+                              className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] glass-card rounded-[2rem] overflow-hidden flex flex-col border border-white/10 hover:border-faith-gold/50 cursor-pointer transition-all"
+                              onClick={() => setSelectedPlace(item)}
+                            >
+                              {/* Card Image Area */}
+                              <div className="h-56 relative overflow-hidden group/img">
+                                {item.image && !brokenImageIds.has(item.id) ? (
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110"
+                                    onError={() => {
+                                      setBrokenImageIds((prev) => {
+                                        const next = new Set(prev);
+                                        next.add(item.id);
+                                        return next;
+                                      });
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white/70 text-sm font-bold tracking-wider">
+                                    NO IMAGE
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#1A0404] via-[#1A0404]/40 to-transparent" />
+                              </div>
 
+                              <div className="p-6 flex-1 flex flex-col">
+                                <h4 className="text-xl font-black text-white mb-3 line-clamp-1 group-hover:text-faith-gold transition-colors">{item.name}</h4>
 
-                      </div>
+                                {/* Rating */}
+                                <div className="flex items-center gap-2 mb-4">
+                                  <div className="p-1.5 bg-faith-gold/20 rounded border border-faith-gold/30">
+                                    <Star size={12} className="text-faith-gold fill-faith-gold" />
+                                  </div>
+                                  <span className="text-sm font-bold text-gray-300 tracking-wider font-mono">
+                                    {item.score.toFixed(1)} <span className="text-gray-500 font-sans tracking-normal font-medium text-xs ml-1">(คะแนนความเข้ากัน)</span>
+                                  </span>
+                                </div>
 
-                      <div className="p-6 flex-1 flex flex-col">
-                        <h4 className="text-xl font-black text-white mb-3 line-clamp-1 group-hover:text-faith-gold transition-colors">{item.name}</h4>
+                                <p className="text-sm text-gray-400 mb-8 flex-1 line-clamp-2 leading-relaxed font-light">
+                                  {item.sacred_object && item.sacred_object !== "-" ? `สิ่งศักดิ์สิทธิ์: ${item.sacred_object}` : (item.offerings && item.offerings !== "-" ? `ของไหว้: ${item.offerings}` : "สถานที่ศักดิ์สิทธิ์ที่เปี่ยมไปด้วยสิริมงคลและพลังวิเศษ")}
+                                </p>
 
-                        {/* Rating */}
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className="p-1.5 bg-faith-gold/20 rounded border border-faith-gold/30">
-                            <Star size={12} className="text-faith-gold fill-faith-gold" />
-                          </div>
-                          <span className="text-sm font-bold text-gray-300 tracking-wider font-mono">
-                            {item.score.toFixed(1)} <span className="text-gray-500 font-sans tracking-normal font-medium text-xs ml-1">(คะแนนความเข้ากัน)</span>
-                          </span>
+                                <button className="w-full bg-white/5 hover:bg-faith-gold text-white hover:text-[#1A0404] py-4 rounded-xl text-xs font-black uppercase transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-transparent group/btn mt-auto">
+                                  <Sparkles size={16} className="text-faith-gold group-hover/btn:text-[#1A0404]" /> รับเส้นทางการเดินทาง
+                                </button>
+                              </div>
+                            </motion.div>
+                          ))}
                         </div>
-
-                        <p className="text-sm text-gray-400 mb-8 flex-1 line-clamp-2 leading-relaxed font-light">
-                          {item.sacred_object && item.sacred_object !== "-" ? `สิ่งศักดิ์สิทธิ์: ${item.sacred_object}` : (item.offerings && item.offerings !== "-" ? `ของไหว้: ${item.offerings}` : "สถานที่ศักดิ์สิทธิ์ที่เปี่ยมไปด้วยสิริมงคลและพลังวิเศษ")}
-                        </p>
-
-                        <button className="w-full bg-white/5 hover:bg-faith-gold text-white hover:text-[#1A0404] py-4 rounded-xl text-xs font-black uppercase transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-transparent group/btn mt-auto">
-                          <Sparkles size={16} className="text-faith-gold group-hover/btn:text-[#1A0404]" /> รับเส้นทางการเดินทาง
-                        </button>
                       </div>
-                    </motion.div>
-                  ))}
-              </div>}
+                    );
+                  })}
+                </>
+              )}
             </main>
 
             {/* Footer matching wireframe */}
@@ -1101,6 +1107,17 @@ function App() {
               setShowRatingModal(false);
               setRatingTargetPlace(null);
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Review History Page */}
+      <AnimatePresence mode="wait">
+        {step === 'review' && (
+          <ReviewHistory
+            userId={userId}
+            userName={userName}
+            onBack={() => setStep('results')}
           />
         )}
       </AnimatePresence>

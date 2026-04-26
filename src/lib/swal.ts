@@ -1,50 +1,65 @@
-import Swal from 'sweetalert2';
+import { useAlert } from '@/components/AlertDialog';
 
-const baseOptions = {
-  confirmButtonColor: '#2563eb',
-  cancelButtonColor: '#6b7280',
+// Store alert function reference for use in non-React contexts
+let alertFunction: ReturnType<typeof useAlert>['showAlert'] | null = null;
+
+export const setAlertFunction = (fn: ReturnType<typeof useAlert>['showAlert']) => {
+  alertFunction = fn;
 };
 
 export async function confirmAction(title: string, text?: string) {
-  const result = await Swal.fire({
+  if (!alertFunction) {
+    console.warn('Alert function not initialized');
+    return false;
+  }
+
+  return await alertFunction({
+    type: 'warning',
     title,
     text,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'ยืนยัน',
-    cancelButtonText: 'ยกเลิก',
-    ...baseOptions,
+    confirmText: 'ยืนยัน',
+    cancelText: 'ยกเลิก',
   });
-
-  return result.isConfirmed;
 }
 
 export function showSuccess(title: string, text?: string) {
-  return Swal.fire({
+  if (!alertFunction) {
+    console.warn('Alert function not initialized');
+    return Promise.resolve();
+  }
+
+  return alertFunction({
+    type: 'success',
     title,
     text,
-    icon: 'success',
-    confirmButtonText: 'ตกลง',
-    ...baseOptions,
+    confirmText: 'ตกลง',
   });
 }
 
 export function showError(title: string, text?: string) {
-  return Swal.fire({
+  if (!alertFunction) {
+    console.warn('Alert function not initialized');
+    return Promise.resolve();
+  }
+
+  return alertFunction({
+    type: 'error',
     title,
     text,
-    icon: 'error',
-    confirmButtonText: 'ตกลง',
-    ...baseOptions,
+    confirmText: 'ตกลง',
   });
 }
 
 export function showInfo(title: string, text?: string) {
-  return Swal.fire({
+  if (!alertFunction) {
+    console.warn('Alert function not initialized');
+    return Promise.resolve();
+  }
+
+  return alertFunction({
+    type: 'info',
     title,
     text,
-    icon: 'info',
-    confirmButtonText: 'ตกลง',
-    ...baseOptions,
+    confirmText: 'ตกลง',
   });
 }

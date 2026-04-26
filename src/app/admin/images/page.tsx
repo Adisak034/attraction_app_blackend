@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import DataTable from 'datatables.net-dt';
-import 'datatables.net-dt/css/dataTables.dataTables.css';
+import { Table } from '@/components/Table';
 import { apiGet } from '@/lib/apiClient';
 
 interface AttractionWithImage {
@@ -33,7 +32,6 @@ const resolveImageUrl = (url: string | null | undefined, cacheBuster?: number) =
 export default function ImageAdminPage() {
   const navigate = useNavigate();
   const tableRef = useRef<HTMLTableElement>(null);
-  const dataTableRef = useRef<any>(null);
 
   const [images, setImages] = useState<AttractionWithImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,48 +65,12 @@ export default function ImageAdminPage() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (loading) return;
-    if (!tableRef.current) return;
-
-    if (dataTableRef.current) {
-      dataTableRef.current.destroy();
-      dataTableRef.current = null;
-    }
-
-    if (images.length === 0) return;
-
-    dataTableRef.current = new DataTable(tableRef.current, {
-      pageLength: 10,
-      lengthMenu: [5, 10, 20, 50],
-      searching: true,
-      ordering: true,
-      paging: true,
-      info: true,
-      dom: 'lrtip',
-    });
-
-    if (searchTerm.trim()) {
-      dataTableRef.current.search(searchTerm.trim()).draw();
-    }
-
-    return () => {
-      if (dataTableRef.current) {
-        dataTableRef.current.destroy();
-        dataTableRef.current = null;
-      }
-    };
-  }, [loading, images]);
-
-  const handleSearch = () => {
-    if (!dataTableRef.current) return;
-    dataTableRef.current.search(searchTerm.trim()).draw();
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
   };
 
   const handleClearSearch = () => {
     setSearchTerm('');
-    if (!dataTableRef.current) return;
-    dataTableRef.current.search('').draw();
   };
 
   useEffect(() => {
@@ -150,78 +112,70 @@ export default function ImageAdminPage() {
       <div className="border rounded-lg shadow-md bg-white overflow-hidden">
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Images</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSearch();
-            }}
-            className="flex items-center gap-2"
-          >
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search images..."
-              className="w-56 p-2 border rounded-md text-sm"
-            />
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-blue-700"
-            >
-              Search
-            </button>
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-semibold hover:bg-gray-300"
-            >
-              Clear
-            </button>
-          </form>
         </div>
-        <div className="overflow-x-auto p-4">
-          {error && <p className="text-red-600 bg-red-50 p-4 rounded-md mb-4">{error}</p>}
-          {loading && <p className="text-gray-600 text-center py-8">Loading images...</p>}
-          <table ref={tableRef} className="w-full display compact hover stripe">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Image Preview</th>
-                <th>Image URL</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {images.map((item) => (
-                <tr key={item.attraction_id}>
-                  <td>{item.attraction_id}</td>
-                  <td>{item.attraction_name}</td>
-                  <td>
-                    {item.attraction_image ? (
-                      <img src={resolveImageUrl(item.attraction_image, imageVersion)} alt="preview" className="w-[100px] h-[80px] object-cover rounded border border-gray-200" />
+        <div className="overflow-hidden">
+          {error && <p className="text-red-600 bg-red-50 p-4 rounded-m m-4 mb-4">{error}</p>}
+          {loading ? (
+            <p className="text-gray-600 text-center py-8">Loading images...</p>
+          ) : (
+            <Table
+              ref={tableRef}
+              data={images}
+              columns={[
+                { key: 'attraction_id', label: 'ID', sortable: true },
+                { key: 'attraction_name', label: 'Name', sortable: true },
+                {
+                  key: 'attraction_image',
+                  label: 'Image Preview',
+                  render: (value: string | null) =>
+                    value ? (
+                      <img
+                        src={resolveImageUrl(value, imageVersion)}
+                        alt="preview"
+                        className="w-[100px] h-[80px] object-cover rounded border border-gray-200"
+                      />
                     ) : (
                       <span className="text-gray-400">No image</span>
-                    )}
-                  </td>
-                  <td>
-                    {item.attraction_image ? (
-                      <a href={resolveImageUrl(item.attraction_image, imageVersion)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline text-sm">
-                        {item.attraction_image.length > 40 ? `${item.attraction_image.slice(0, 40)}...` : item.attraction_image}
+                    ),
+                },
+                {
+                  key: 'attraction_image',
+                  label: 'Image URL',
+                  render: (value: string | null) =>
+                    value ? (
+                      <a
+                        href={resolveImageUrl(value, imageVersion)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                      >
+                        {value.length > 40 ? `${value.slice(0, 40)}...` : value}
                       </a>
                     ) : (
                       <span className="text-gray-400">No URL</span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="flex gap-2">
-                      <button type="button" className="edit-image-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm" data-attraction-id={item.attraction_id}>Edit</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    ),
+                },
+                {
+                  key: 'action',
+                  label: 'Action',
+                  render: (_, row: AttractionWithImage) => (
+                    <button
+                      type="button"
+                      className="edit-image-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm"
+                      data-attraction-id={row.attraction_id}
+                    >
+                      Edit
+                    </button>
+                  ),
+                },
+              ]}
+              pageSize={10}
+              pageSizeOptions={[5, 10, 20, 50]}
+              searchable={true}
+              searchPlaceholder="Search images..."
+              onSearch={handleSearch}
+            />
+          )}
         </div>
       </div>
     </div>

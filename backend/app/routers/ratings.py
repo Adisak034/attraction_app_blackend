@@ -79,6 +79,39 @@ async def create_rating(rating: RatingCreate):
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+@router.get("/user/{user_id}", response_model=List[dict])
+async def get_user_ratings(user_id: int):
+    """Get all ratings for a specific user with attraction names"""
+    try:
+        connection = get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            SELECT 
+                r.rating_id,
+                r.user_id,
+                r.attraction_id,
+                r.rating_work,
+                r.rating_finance,
+                r.rating_love,
+                r.created_at,
+                a.attraction_name
+            FROM rating r
+            JOIN attraction a ON r.attraction_id = a.attraction_id
+            WHERE r.user_id = %s
+            ORDER BY r.created_at DESC
+        """
+        
+        cursor.execute(query, (user_id,))
+        rows = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        
+        return rows
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
 @router.delete("/{id}")
 async def delete_rating(id: int):
     """Delete a rating"""

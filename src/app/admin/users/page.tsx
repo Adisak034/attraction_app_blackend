@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import DataTable from 'datatables.net-dt';
-import 'datatables.net-dt/css/dataTables.dataTables.css';
+import { Table } from '@/components/Table';
 import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
 import { confirmAction, showError, showSuccess } from '@/lib/swal';
 
@@ -23,7 +22,6 @@ const initialFormState = {
 export default function UserAdminPage() {
   const navigate = useNavigate();
   const tableRef = useRef<HTMLTableElement>(null);
-  const dataTableRef = useRef<any>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState(initialFormState);
   const [loading, setLoading] = useState(true);
@@ -52,48 +50,12 @@ export default function UserAdminPage() {
     fetchUsers();
   }, []);
 
-  useEffect(() => {
-    if (loading) return;
-    if (!tableRef.current) return;
-
-    if (dataTableRef.current) {
-      dataTableRef.current.destroy();
-      dataTableRef.current = null;
-    }
-
-    if (users.length === 0) return;
-
-    dataTableRef.current = new DataTable(tableRef.current, {
-      pageLength: 10,
-      lengthMenu: [5, 10, 20, 50],
-      searching: true,
-      ordering: true,
-      paging: true,
-      info: true,
-      dom: 'lrtip',
-    });
-
-    if (searchTerm.trim()) {
-      dataTableRef.current.search(searchTerm.trim()).draw();
-    }
-
-    return () => {
-      if (dataTableRef.current) {
-        dataTableRef.current.destroy();
-        dataTableRef.current = null;
-      }
-    };
-  }, [loading, users]);
-
-  const handleSearch = () => {
-    if (!dataTableRef.current) return;
-    dataTableRef.current.search(searchTerm.trim()).draw();
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
   };
 
   const handleClearSearch = () => {
     setSearchTerm('');
-    if (!dataTableRef.current) return;
-    dataTableRef.current.search('').draw();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -236,66 +198,50 @@ export default function UserAdminPage() {
       <div className="border rounded-lg shadow-md bg-white overflow-hidden">
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Users</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSearch();
-            }}
-            className="flex items-center gap-2"
-          >
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search users..."
-              className="w-56 p-2 border rounded-md text-sm"
-            />
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-blue-700"
-            >
-              Search
-            </button>
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-semibold hover:bg-gray-300"
-            >
-              Clear
-            </button>
-          </form>
         </div>
         {error && <p className="text-red-500 mb-4 p-6">{error}</p>}
-        {loading && <p className="text-gray-500 p-6">Loading...</p>}
-        <div className="overflow-x-auto">
-          <table ref={tableRef} className="w-full display compact hover stripe">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Username</th>
-                <th>Role</th>
-                <th>Password</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.user_id} data-id={user.user_id}>
-                  <td>{user.user_id}</td>
-                  <td>{user.user_name}</td>
-                  <td>{user.role || '-'}</td>
-                  <td>••••••••</td>
-                  <td>
-                    <div className="flex gap-2 justify-center">
-                      <button type="button" className="edit-user-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm" data-user-id={user.user_id}>Edit</button>
-                      <button type="button" className="delete-user-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm" data-user-id={user.user_id} data-user-name={user.user_name}>Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <p className="text-gray-500 p-6">Loading...</p>
+        ) : (
+          <Table
+            ref={tableRef}
+            data={users}
+            columns={[
+              { key: 'user_id', label: 'ID', sortable: true, className: 'w-12' },
+              { key: 'user_name', label: 'Username', sortable: true },
+              { key: 'role', label: 'Role', sortable: true, render: (val) => val || '-' },
+              { key: 'password', label: 'Password', sortable: false, render: () => '••••••••' },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (_, row: User) => (
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      type="button"
+                      className="edit-user-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm"
+                      data-user-id={row.user_id}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="delete-user-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
+                      data-user-id={row.user_id}
+                      data-user-name={row.user_name}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+            pageSize={10}
+            pageSizeOptions={[5, 10, 20, 50]}
+            searchable={true}
+            searchPlaceholder="Search users..."
+            onSearch={handleSearch}
+          />
+        )}
       </div>
     </div>
   );

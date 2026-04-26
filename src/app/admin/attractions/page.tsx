@@ -1,8 +1,7 @@
 import { useState, useEffect, FormEvent, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import DataTable from 'datatables.net-dt';
-import 'datatables.net-dt/css/dataTables.dataTables.css';
+import { Table } from '@/components/Table';
 import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
 import { confirmAction, showError, showSuccess } from '@/lib/swal';
 
@@ -56,7 +55,6 @@ const initialFormState = {
 export default function AttractionAdminPage() {
   // Data states
   const tableRef = useRef<HTMLTableElement>(null);
-  const dataTableRef = useRef<any>(null);
   const [attractions, setAttractions] = useState<Attraction[]>([]);
   const [types, setTypes] = useState<Type[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -102,48 +100,12 @@ export default function AttractionAdminPage() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (loading) return;
-    if (!tableRef.current) return;
-
-    if (dataTableRef.current) {
-      dataTableRef.current.destroy();
-      dataTableRef.current = null;
-    }
-
-    if (attractions.length === 0) return;
-
-    dataTableRef.current = new DataTable(tableRef.current, {
-      pageLength: 10,
-      lengthMenu: [5, 10, 20, 50],
-      searching: true,
-      ordering: true,
-      paging: true,
-      info: true,
-      dom: 'lrtip',
-    });
-
-    if (searchTerm.trim()) {
-      dataTableRef.current.search(searchTerm.trim()).draw();
-    }
-
-    return () => {
-      if (dataTableRef.current) {
-        dataTableRef.current.destroy();
-        dataTableRef.current = null;
-      }
-    };
-  }, [loading, attractions]);
-
-  const handleSearch = () => {
-    if (!dataTableRef.current) return;
-    dataTableRef.current.search(searchTerm.trim()).draw();
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
   };
 
   const handleClearSearch = () => {
     setSearchTerm('');
-    if (!dataTableRef.current) return;
-    dataTableRef.current.search('').draw();
   };
 
   const formatCoordinate = (value: number | string | null | undefined) => {
@@ -369,80 +331,74 @@ export default function AttractionAdminPage() {
 
       {/* Table Section */}
       <div className="border rounded-lg shadow-md bg-white overflow-hidden">
-        <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800">Attractions</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSearch();
-            }}
-            className="flex items-center gap-2"
-          >
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search attractions..."
-              className="w-56 p-2 border rounded-md text-sm"
-            />
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-blue-700"
-            >
-              Search
-            </button>
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-semibold hover:bg-gray-300"
-            >
-              Clear
-            </button>
-          </form>
+        <div className="p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Attractions</h2>
         </div>
         {error && <p className="text-red-500 mb-4 p-6">{error}</p>}
-        {loading && <p className="text-gray-500 p-6">Loading...</p>}
-        <div className="overflow-x-auto">
-          <table ref={tableRef} className="w-full display compact hover stripe">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Type</th>
-                <th>District</th>
-                <th>Sect</th>
-                <th>Lat</th>
-                <th>Lng</th>
-                <th>Sacred Objects</th>
-                <th>Offering</th>
-                <th>Categories</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {attractions.map((attr) => (
-                <tr key={attr.attraction_id} data-id={attr.attraction_id}>
-                  <td>{attr.attraction_id}</td>
-                  <td>{attr.attraction_name}</td>
-                  <td>{getLookupName(attr.type_id as number | string | null | undefined, typeNameMap)}</td>
-                  <td>{getLookupName(attr.district_id as number | string | null | undefined, districtNameMap)}</td>
-                  <td>{getLookupName(attr.sect_id as number | string | null | undefined, sectNameMap)}</td>
-                  <td>{formatCoordinate(attr.lat as number | string | null | undefined)}</td>
-                  <td>{formatCoordinate(attr.lng as number | string | null | undefined)}</td>
-                  <td title={String(attr.sacred_obj || '')}>{attr.sacred_obj ? String(attr.sacred_obj).substring(0, 30) + (String(attr.sacred_obj).length > 30 ? '...' : '') : '-'}</td>
-                  <td title={String(attr.offering || '')}>{attr.offering ? String(attr.offering).substring(0, 30) + (String(attr.offering).length > 30 ? '...' : '') : '-'}</td>
-                  <td>{attr.categories || '-'}</td>
-                  <td>
-                    <div className="flex gap-2 justify-center">
-                      <button type="button" className="edit-attraction-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm" data-attraction-id={attr.attraction_id}>Edit</button>
-                      <button type="button" className="delete-attraction-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm" data-attraction-id={attr.attraction_id} data-attraction-name={attr.attraction_name}>Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <p className="text-gray-500 p-6">Loading...</p>
+        ) : (
+          <Table
+            ref={tableRef}
+            data={attractions}
+            columns={[
+              { key: 'attraction_id', label: 'ID', sortable: true, className: 'w-12' },
+              { key: 'attraction_name', label: 'Name', sortable: true },
+              { key: 'type_id', label: 'Type', sortable: false, render: (val) => getLookupName(val, typeNameMap) },
+              { key: 'district_id', label: 'District', sortable: false, render: (val) => getLookupName(val, districtNameMap) },
+              { key: 'sect_id', label: 'Sect', sortable: false, render: (val) => getLookupName(val, sectNameMap) },
+              { key: 'lat', label: 'Lat', sortable: false, render: formatCoordinate, className: 'w-20' },
+              { key: 'lng', label: 'Lng', sortable: false, render: formatCoordinate, className: 'w-20' },
+              {
+                key: 'sacred_obj',
+                label: 'Sacred Objects',
+                render: (val) => (
+                  <span title={String(val || '')}>
+                    {val ? String(val).substring(0, 30) + (String(val).length > 30 ? '...' : '') : '-'}
+                  </span>
+                ),
+              },
+              {
+                key: 'offering',
+                label: 'Offering',
+                render: (val) => (
+                  <span title={String(val || '')}>
+                    {val ? String(val).substring(0, 30) + (String(val).length > 30 ? '...' : '') : '-'}
+                  </span>
+                ),
+              },
+              { key: 'categories', label: 'Categories', sortable: false, render: (val) => val || '-' },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (_, row: Attraction) => (
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      type="button"
+                      className="edit-attraction-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm"
+                      data-attraction-id={row.attraction_id}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="delete-attraction-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
+                      data-attraction-id={row.attraction_id}
+                      data-attraction-name={row.attraction_name}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+            pageSize={10}
+            pageSizeOptions={[5, 10, 20, 50]}
+            searchable={true}
+            searchPlaceholder="Search attractions..."
+            onSearch={handleSearch}
+          />
+        )}
       </div>
     </div>
   );

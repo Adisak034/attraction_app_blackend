@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import DataTable from 'datatables.net-dt';
-import 'datatables.net-dt/css/dataTables.dataTables.css';
+import { Table } from '@/components/Table';
 import { apiGet, apiDelete } from '@/lib/apiClient';
 import { confirmAction, showError, showInfo, showSuccess } from '@/lib/swal';
 
@@ -30,11 +29,11 @@ interface Stats {
 export default function ActivityLogsPage() {
   const navigate = useNavigate();
   const tableRef = useRef<HTMLTableElement>(null);
-  const dataTableRef = useRef<any>(null);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const escapeCsv = (value: string | number | null | undefined) => {
     const text = String(value ?? '');
@@ -46,7 +45,7 @@ export default function ActivityLogsPage() {
 
   const handleExportCsv = () => {
     if (logs.length === 0) {
-      void showInfo('ไม่มีข้อมูล', 'ไม่มีกิจกรรมสำหรับส่งออก');
+      void showInfo('No data', 'No activity logs available to export');
       return;
     }
 
@@ -78,7 +77,7 @@ export default function ActivityLogsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `activity-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `activity-logs-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -105,71 +104,66 @@ export default function ActivityLogsPage() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (loading) return;
-    if (!tableRef.current) return;
-
-    if (dataTableRef.current) {
-      dataTableRef.current.destroy();
-      dataTableRef.current = null;
-    }
-
-    if (logs.length === 0) return;
-
-    dataTableRef.current = new DataTable(tableRef.current, {
-      pageLength: 10,
-      lengthMenu: [5, 10, 20, 50],
-      searching: true,
-      ordering: true,
-      paging: true,
-      info: true,
-      dom: 'lrtip',
-    });
-
-    return () => {
-      if (dataTableRef.current) {
-        dataTableRef.current.destroy();
-        dataTableRef.current = null;
-      }
-    };
-  }, [loading, logs]);
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+  };
 
   const handleDelete = async (logId: number, userName: string, attractionName: string) => {
     const subject = attractionName
-      ? `${userName} - ${attractionName}`
+      ? `${attractionName} - ${userName || 'Unknown'}`
       : userName || `Log #${logId}`;
-    const isConfirmed = await confirmAction('ยืนยันการลบกิจกรรม', `ต้องการลบรายการ "${subject}" ใช่หรือไม่?`);
+    const isConfirmed = await confirmAction(
+      'Confirm Delete Activity Log',
+      `Are you sure you want to delete the activity log for "${subject}"?`
+    );
     if (!isConfirmed) {
       return;
     }
     try {
       await apiDelete(`/api/activity-logs/${logId}`);
       fetchData();
-      await showSuccess('ลบสำเร็จ', `ลบกิจกรรม "${subject}" เรียบร้อยแล้ว`);
+      await showSuccess('Deleted', `Activity log for "${subject}" has been deleted successfully`);
     } catch (err) {
-      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
+      await showError(
+        'Delete Failed',
+        err instanceof Error ? err.message : 'An error occurred while deleting the log'
+      );
     }
   };
 
-  useEffect(() => {
-    const tableElement = tableRef.current;
-    if (!tableElement) return;
-
-    const handleTableClick = (event: Event) => {
-      const target = event.target as HTMLElement;
-      const deleteButton = target.closest('.delete-log-btn') as HTMLButtonElement | null;
-      if (!deleteButton) return;
-
-      const logId = Number(deleteButton.dataset.logId);
-      const userName = deleteButton.dataset.userName || '';
-      const attractionName = deleteButton.dataset.attractionName || '';
-      if (!Number.isFinite(logId)) return;
-      handleDelete(logId, userName, attractionName);
-    };
-
-    tableElement.addEventListener('click', handleTableClick);
-    return () => tableElement.removeEventListener('click', handleTableClick);
-  }, [logs]);
+  const columns = [
+    { key: 'log_id', label: 'Log ID', sortable: true },
+    { key: 'user_name', label: 'User', sortable: true, render: (val: string) => val || '-' },
+    { key: 'attraction_name', label: 'Attraction', sortable: true, render: (val: string) => val || '-' },
+    { 
+      key: 'action_type', 
+      label: 'Action', 
+      sortable: true,
+      render: (val: string) => (
+        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">
+          {val}
+        </span>
+      )
+    },
+    { 
+      key: 'created_at', 
+      label: 'Date/Time', 
+      sortable: true,
+      render: (val: string) => new Date(val).toLocaleString('th-TH')
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_: any, log: ActivityLog) => (
+        <button
+          onClick={() => handleDelete(log.log_id, log.user_name || '', log.attraction_name || '')}
+          className="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
+        >
+          Delete
+        </button>
+      )
+    }
+  ];
 
   return (
     <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
@@ -177,8 +171,8 @@ export default function ActivityLogsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/admin')}
-            aria-label="ย้อนกลับ"
-            title="ย้อนกลับ"
+            aria-label="Go back"
+            title="Go back"
             className="h-10 w-10 flex items-center justify-center border rounded-md text-gray-700 hover:bg-gray-50"
           >
             <ArrowLeft size={18} />
@@ -252,46 +246,15 @@ export default function ActivityLogsPage() {
         ) : null}
         {!loading && !error && logs.length > 0 ? (
           <div className="overflow-x-auto p-4">
-            <table ref={tableRef} className="w-full display compact hover stripe">
-              <thead>
-                <tr>
-                  <th>Log ID</th>
-                  <th>User</th>
-                  <th>Attraction</th>
-                  <th>Action</th>
-                  <th>Date/Time</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log) => (
-                  <tr key={log.log_id} data-id={log.log_id}>
-                    <td>{log.log_id}</td>
-                    <td>{log.user_name || '-'}</td>
-                    <td>{log.attraction_name || '-'}</td>
-                    <td>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">
-                        {log.action_type}
-                      </span>
-                    </td>
-                    <td>
-                      {new Date(log.created_at).toLocaleString('th-TH')}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="delete-log-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
-                        data-log-id={log.log_id}
-                        data-user-name={log.user_name || ''}
-                        data-attraction-name={log.attraction_name || ''}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <Table
+              ref={tableRef}
+              columns={columns}
+              data={logs}
+              pageSize={10}
+              pageSizeOptions={[5, 10, 20, 50]}
+              searchable={true}
+              onSearch={handleSearch}
+            />
           </div>
         ) : null}
       </div>

@@ -10,14 +10,12 @@
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.8",
-    "datatables.net": "^2.3.7",
-    "datatables.net-dt": "^2.3.7",
+    "axios": "^1.15.2",
     "framer-motion": "^12.34.5",
     "lucide-react": "^0.564.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.0",
-    "sweetalert2": "^11.26.21"
+    "react-router-dom": "^6.26.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",
