@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiGet } from '@/lib/apiClient';
 import { Table } from '@/components/Table';
@@ -86,70 +86,90 @@ export default function ReviewHistory({ userId, userName, onBack }: ReviewHistor
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#1A0404] to-black text-white pb-12">
-      {/* Header */}
-      <div className="sticky top-0 z-40 backdrop-blur-md bg-black/40 border-b border-faith-gold/20">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <motion.button
-              onClick={onBack}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 hover:bg-faith-gold/20 rounded-lg transition-colors"
-            >
-              <ArrowLeft size={24} className="text-faith-gold" />
-            </motion.button>
+    <>
+      {/* Overlay Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onBack}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+      />
+
+      {/* Modal Content */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+      >
+        <motion.div
+          className="bg-[#1A0404] border border-faith-gold/20 rounded-2xl shadow-2xl w-full max-w-2xl pointer-events-auto max-h-[90vh] overflow-hidden flex flex-col"
+        >
+          {/* Header */}
+          <div className="sticky top-0 z-50 bg-[#1A0404] border-b border-faith-gold/10 px-6 py-4 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-3xl font-black text-faith-gold">ประวัติการให้คะแนน</h1>
-              <p className="text-gray-400 text-sm">ผู้ใช้: {userName}</p>
+              <h2 className="text-xl font-black text-faith-gold">ประวัติการให้คะแนน</h2>
+              <p className="text-gray-400 text-xs mt-1">ผู้ใช้: {userName}</p>
             </div>
+            <button
+              onClick={onBack}
+              className="p-1 hover:bg-faith-gold/10 rounded-lg transition-colors text-faith-gold flex-shrink-0"
+            >
+              <X size={20} />
+            </button>
           </div>
-          <div className="text-right">
-            <p className="text-2xl font-black text-faith-gold">{ratings.length}</p>
-            <p className="text-gray-400 text-xs uppercase tracking-widest">สถานที่ที่ให้คะแนน</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        {/* Loading State */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-24">
-            <Loader2 className="animate-spin text-faith-gold mb-4" size={40} />
-            <p className="text-gray-400">กำลังโหลดประวัติการให้คะแนน...</p>
-          </div>
-        )}
+          {/* Scrollbar Hide CSS */}
+          <style>{`
+            .scrollbar-hide::-webkit-scrollbar {
+              display: none;
+            }
+            .scrollbar-hide {
+              -ms-overflow-style: none;
+              scrollbar-width: none;
+            }
+          `}</style>
 
-        {/* Error State */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-950/50 border border-red-800/50 rounded-xl p-6 text-center"
-          >
-            <p className="text-red-400 font-semibold">{error}</p>
-          </motion.div>
-        )}
+          {/* Content */}
+          <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1 scrollbar-hide">
+            {loading && (
+              <div className="flex flex-col items-center justify-center py-12 sm:py-16">
+                <Loader2 className="animate-spin text-faith-gold mb-3 sm:mb-4" size={28} />
+                <p className="text-gray-400 text-xs sm:text-sm">กำลังโหลดประวัติการให้คะแนน...</p>
+              </div>
+            )}
 
-        {/* Empty State */}
-        {!loading && !error && ratings.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-20"
-          >
-            <div className="text-6xl mb-4">🙏</div>
-            <p className="text-gray-400 text-lg mb-2">คุณยังไม่ได้ให้คะแนนสถานที่ใดเลย</p>
-            <p className="text-gray-500 text-sm">เริ่มต้นการให้คะแนนสถานที่ศักดิ์สิทธิ์เพื่อแบ่งปันประสบการณ์ของคุณ</p>
-          </motion.div>
-        )}
+            {/* Error State */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-red-950/50 border border-red-800/50 rounded-lg p-3 sm:p-4 text-center"
+              >
+                <p className="text-red-400 font-semibold text-xs sm:text-sm">{error}</p>
+              </motion.div>
+            )}
 
-        {/* Table View */}
-        {!loading && !error && ratings.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="overflow-x-auto bg-gray-950/50 rounded-lg shadow-lg p-6 border border-gray-800/50"
+            {/* Empty State */}
+            {!loading && !error && ratings.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-12 sm:py-16"
+              >
+                <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">🙏</div>
+                <p className="text-gray-400 text-sm sm:text-base mb-1">คุณยังไม่ได้ให้คะแนนสถานที่ใดเลย</p>
+                <p className="text-gray-500 text-xs sm:text-sm">เริ่มต้นการให้คะแนนสถานที่ศักดิ์สิทธิ์เพื่อแบ่งปันประสบการณ์ของคุณ</p>
+              </motion.div>
+            )}
+
+            {/* Table View */}
+            {!loading && !error && ratings.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+            className="overflow-x-auto bg-gray-950/50 rounded-lg shadow-lg p-2 sm:p-4 border border-gray-800/50"
           >
             <style>{`
               #review-history-table * {
@@ -161,19 +181,32 @@ export default function ReviewHistory({ userId, userName, onBack }: ReviewHistor
               #review-history-table table {
                 background-color: transparent !important;
                 color: #e5e7eb;
+                font-size: 0.75rem;
+                width: 100%;
+              }
+              @media (min-width: 640px) {
+                #review-history-table table {
+                  font-size: 0.875rem;
+                }
               }
               #review-history-table thead {
                 background-color: transparent !important;
               }
               #review-history-table thead tr {
                 background-color: transparent !important;
-                border-bottom: 2px solid #374151 !important;
+                border-bottom: 1px solid #374151 !important;
               }
               #review-history-table thead th {
                 color: #f3f4f6 !important;
                 font-weight: 600 !important;
                 border: none !important;
                 background-color: transparent !important;
+                padding: 0.5rem !important;
+              }
+              @media (min-width: 640px) {
+                #review-history-table thead th {
+                  padding: 0.75rem !important;
+                }
               }
               #review-history-table tbody {
                 background-color: transparent !important;
@@ -188,6 +221,12 @@ export default function ReviewHistory({ userId, userName, onBack }: ReviewHistor
               #review-history-table tbody td {
                 color: #d1d5db !important;
                 background-color: transparent !important;
+                padding: 0.5rem !important;
+              }
+              @media (min-width: 640px) {
+                #review-history-table tbody td {
+                  padding: 0.75rem !important;
+                }
               }
               #review-history-table > div:first-child {
                 background-color: transparent !important;
@@ -195,11 +234,23 @@ export default function ReviewHistory({ userId, userName, onBack }: ReviewHistor
               #review-history-table > div > div:first-child {
                 background-color: transparent !important;
                 border: none !important;
+                margin-bottom: 0.75rem !important;
               }
               #review-history-table > div > div:first-child input {
                 background-color: #1f2937 !important;
                 color: #f3f4f6 !important;
                 border-color: #374151 !important;
+                padding: 0.375rem 0.5rem !important;
+                font-size: 0.75rem !important;
+                min-height: 2.5rem !important;
+                width: 100% !important;
+              }
+              @media (min-width: 640px) {
+                #review-history-table > div > div:first-child input {
+                  font-size: 0.875rem !important;
+                  padding: 0.5rem 0.75rem !important;
+                  min-height: 2.75rem !important;
+                }
               }
               #review-history-table > div > div:first-child input::placeholder {
                 color: #9ca3af !important;
@@ -212,11 +263,29 @@ export default function ReviewHistory({ userId, userName, onBack }: ReviewHistor
                 background-color: transparent !important;
                 border-top: 1px solid #1f2937 !important;
                 color: #d1d5db !important;
+                font-size: 0.75rem !important;
+                padding-top: 0.75rem !important;
+                margin-top: 0.75rem !important;
+              }
+              @media (min-width: 640px) {
+                #review-history-table > div > div:last-child {
+                  font-size: 0.875rem !important;
+                }
               }
               #review-history-table select {
                 background-color: #1f2937 !important;
                 color: #f3f4f6 !important;
                 border-color: #374151 !important;
+                min-height: 2.5rem !important;
+                font-size: 0.75rem !important;
+                padding: 0.25rem 0.5rem !important;
+              }
+              @media (min-width: 640px) {
+                #review-history-table select {
+                  font-size: 0.875rem !important;
+                  min-height: 2.75rem !important;
+                  padding: 0.5rem 0.75rem !important;
+                }
               }
               #review-history-table select:focus {
                 border-color: #fbbf24 !important;
@@ -230,6 +299,16 @@ export default function ReviewHistory({ userId, userName, onBack }: ReviewHistor
                 border-color: #374151 !important;
                 color: #d1d5db !important;
                 background-color: transparent !important;
+                min-height: 2.5rem !important;
+                padding: 0.25rem 0.5rem !important;
+                font-size: 0.7rem !important;
+              }
+              @media (min-width: 640px) {
+                #review-history-table button {
+                  font-size: 0.875rem !important;
+                  min-height: 2.75rem !important;
+                  padding: 0.5rem 1rem !important;
+                }
               }
               #review-history-table button:hover:not(:disabled) {
                 background-color: rgba(55, 65, 81, 0.5) !important;
@@ -258,9 +337,11 @@ export default function ReviewHistory({ userId, userName, onBack }: ReviewHistor
                 onSearch={handleSearch}
               />
             </div>
-          </motion.div>
-        )}
-      </div>
-    </div>
+              </motion.div>
+            )}
+            </div>
+        </motion.div>
+      </motion.div>
+    </>
   );
 }

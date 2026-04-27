@@ -10,6 +10,7 @@ import loveBg from './assets/love_bg.png';
 import PlaceMap from './components/Map';
 import UserMenu from './components/UserMenu';
 import ReviewHistory from './components/ReviewHistory';
+import UserProfile from './components/UserProfile';
 
 interface Recommendation {
   id: string;
@@ -24,7 +25,7 @@ interface Recommendation {
   offerings?: string;
 }
 
-type Step = 'selection' | 'register' | 'login' | 'results' | 'review';
+type Step = 'selection' | 'register' | 'login' | 'results' | 'review' | 'profile';
 
 interface AttractionApi {
   attraction_id: number;
@@ -783,6 +784,7 @@ function App() {
                 <UserMenu
                   userName={userName}
                   onViewHistory={() => setStep('review')}
+                  onViewProfile={() => setStep('profile')}
                   onLogout={() => {
                     localStorage.removeItem('faith_userId');
                     localStorage.removeItem('faith_userName');
@@ -1115,6 +1117,17 @@ function App() {
       <AnimatePresence mode="wait">
         {step === 'review' && (
           <ReviewHistory
+            userId={userId}
+            userName={userName}
+            onBack={() => setStep('results')}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* User Profile Page */}
+      <AnimatePresence mode="wait">
+        {step === 'profile' && (
+          <UserProfile
             userId={userId}
             userName={userName}
             onBack={() => setStep('results')}

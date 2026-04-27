@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, History, LogOut } from 'lucide-react';
+import { ChevronDown, History, LogOut, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface UserMenuProps {
   userName: string;
   onViewHistory: () => void;
+  onViewProfile: () => void;
   onLogout: () => void;
 }
 
-export default function UserMenu({ userName, onViewHistory, onLogout }: UserMenuProps) {
+export default function UserMenu({ userName, onViewHistory, onViewProfile, onLogout }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -27,6 +28,11 @@ export default function UserMenu({ userName, onViewHistory, onLogout }: UserMenu
   const handleViewHistory = () => {
     setIsOpen(false);
     onViewHistory();
+  };
+
+  const handleViewProfile = () => {
+    setIsOpen(false);
+    onViewProfile();
   };
 
   const handleLogout = () => {
@@ -61,6 +67,16 @@ export default function UserMenu({ userName, onViewHistory, onLogout }: UserMenu
             className="absolute right-0 mt-2 w-48 bg-[#1A0404]/95 border border-faith-gold/50 rounded-xl shadow-2xl backdrop-blur-md overflow-hidden z-[100]"
           >
             <div className="py-2">
+              {/* View Profile Button */}
+              <motion.button
+                onClick={handleViewProfile}
+                whileHover={{ x: 4 }}
+                className="w-full px-4 py-3 flex items-center gap-3 text-gray-200 hover:bg-faith-gold/20 hover:text-faith-gold transition-colors text-sm font-semibold border-b border-white/10"
+              >
+                <User size={16} />
+                ข้อมูลผู้ใช้
+              </motion.button>
+
               {/* View History Button */}
               <motion.button
                 onClick={handleViewHistory}
