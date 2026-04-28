@@ -9,7 +9,7 @@ import moneyBg from './assets/money_bg.png';
 import loveBg from './assets/love_bg.png';
 import PlaceMap from './components/Map';
 import UserMenu from './components/UserMenu';
-import ReviewHistory from './components/ReviewHistory';
+import RatingHistory from './components/RatingHistory';
 import UserProfile from './components/UserProfile';
 
 interface Recommendation {
@@ -1116,7 +1116,7 @@ function App() {
       {/* Review History Page */}
       <AnimatePresence mode="wait">
         {step === 'review' && (
-          <ReviewHistory
+          <RatingHistory
             userId={userId}
             userName={userName}
             onBack={() => setStep('results')}
