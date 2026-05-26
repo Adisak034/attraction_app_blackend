@@ -3,6 +3,9 @@ from app.core.database import get_connection
 from app.schemas.schemas import ImageCreate, ImageUpdate
 from typing import List, Optional
 import os
+import time
+import random
+import string
 from urllib.parse import urlparse
 
 router = APIRouter(prefix="/api/image", tags=["images"])
@@ -170,7 +173,7 @@ async def update_image(id: int, image: ImageUpdate):
 
 @router.delete("/{id}")
 async def delete_image(id: int):
-    """Delete attraction's image"""
+    """Delete attraction's image and remove file from disk"""
     connection = None
     cursor = None
     try:
@@ -185,14 +188,28 @@ async def delete_image(id: int):
         if not attraction:
             raise HTTPException(status_code=404, detail="Attraction not found")
 
-        cursor.execute("UPDATE attraction SET attraction_image = NULL WHERE attraction_id = %s", (id,))
+        # Get the image path and delete the file if it exists
+        image_path = attraction.get("attraction_image")
+        if image_path:
+            # Extract filename from path (e.g., "/uploads/12.jpg" -> "12.jpg")
+            filename = image_path.rsplit("/", 1)[-1] if "/" in image_path else image_path
+            filepath = os.path.join(UPLOAD_DIR, filename)
+            
+            # Delete file from disk
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except OSError as e:
+                print(f"Warning: Could not delete file {filepath}: {e}")
 
+        # Update database to remove image reference
+        cursor.execute("UPDATE attraction SET attraction_image = NULL WHERE attraction_id = %s", (id,))
         connection.commit()
 
         return {
             "message": "Image deleted successfully",
             "attraction_id": id,
-            "already_empty": attraction.get("attraction_image") in (None, ""),
+            "already_empty": image_path in (None, ""),
         }
 
     except HTTPException as e:
@@ -232,12 +249,11 @@ async def upload_image(
         # Create upload directory if it doesn't exist
         os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-        # Use attraction_id as filename when provided (example: 12.png)
+        # Remove existing files for the same attraction id (all extensions)
         if attraction_id is not None:
             if attraction_id <= 0:
                 raise HTTPException(status_code=400, detail="attraction_id must be greater than 0")
 
-            # Remove existing files for the same attraction id but different extensions.
             prefix = f"{attraction_id}."
             for existing in os.listdir(UPLOAD_DIR):
                 if existing.startswith(prefix):

@@ -138,7 +138,7 @@ export default function EditAttractionPage() {
         category_ids: formData.category_ids,
       });
       await showSuccess('แก้ไขสำเร็จ', `แก้ไขสถานที่ "${formData.attraction_name.trim()}" เรียบร้อยแล้ว`);
-      navigate('/admin/attractions', { replace: true });
+      navigate(`/admin/attractions?editedId=${id}`, { replace: true });
     } catch (err) {
       await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
@@ -212,7 +212,7 @@ export default function EditAttractionPage() {
           </div>
 
           <div className="md:col-span-3 flex items-center justify-end space-x-4">
-            <button type="button" onClick={() => navigate('/admin/attractions', { replace: true })} className="bg-gray-200 text-gray-800 px-6 py-3 rounded-md shadow-sm hover:bg-gray-300 font-semibold">
+            <button type="button" onClick={() => navigate(`/admin/attractions?editedId=${id}`, { replace: true })} className="bg-gray-200 text-gray-800 px-6 py-3 rounded-md shadow-sm hover:bg-gray-300 font-semibold">
               Cancel
             </button>
             <button type="submit" className="bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold">

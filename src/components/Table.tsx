@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
 interface Column {
@@ -21,6 +21,8 @@ interface TableProps<T> {
   initialSortDir?: 'asc' | 'desc';
   className?: string;
   renderRow?: (row: T, index: number) => React.ReactNode;
+  highlightedRowId?: number | null;
+  rowIdKey?: string;
 }
 
 export const Table = React.forwardRef<HTMLTableElement, TableProps<any>>(
@@ -37,6 +39,8 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps<any>>(
       initialSortDir = 'asc',
       className = '',
       renderRow,
+      highlightedRowId = null,
+      rowIdKey = 'id',
     },
     ref
   ) => {
@@ -89,6 +93,20 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps<any>>(
       const end = start + pageLength;
       return sortedData.slice(start, end);
     }, [sortedData, currentPage, pageLength]);
+
+    // Auto-navigate to page containing highlighted row
+    useEffect(() => {
+      if (highlightedRowId === null) return;
+
+      const highlightedIndex = sortedData.findIndex(
+        (row) => row[rowIdKey] === highlightedRowId
+      );
+
+      if (highlightedIndex !== -1) {
+        const pageNumber = Math.floor(highlightedIndex / pageLength) + 1;
+        setCurrentPage(pageNumber);
+      }
+    }, [highlightedRowId, sortedData, pageLength, rowIdKey]);
 
     const handleSearch = (value: string) => {
       setSearchTerm(value);
@@ -163,7 +181,14 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps<any>>(
                   renderRow ? (
                     <React.Fragment key={index}>{renderRow(row, index)}</React.Fragment>
                   ) : (
-                    <tr key={index} className="border-b hover:bg-gray-50 transition">
+                    <tr
+                      key={index}
+                      className={`border-b hover:bg-gray-50 transition ${
+                        highlightedRowId !== null && row[rowIdKey] === highlightedRowId
+                          ? 'bg-yellow-100'
+                          : ''
+                      }`}
+                    >
                       {columns.map((col) => (
                         <td key={col.key} className={`px-4 py-3 ${col.className || ''}`}>
                           {col.render ? col.render(row[col.key], row) : row[col.key]}

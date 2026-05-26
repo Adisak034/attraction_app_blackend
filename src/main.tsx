@@ -98,7 +98,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AlertProvider>
       <AppInitializer>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/admin/login" element={<Navigate to="/" replace />} />
