@@ -45,17 +45,14 @@ async def get_activity_stats():
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Get total activities
-        cursor.execute("SELECT COUNT(*) as total FROM activity_log")
-        total = cursor.fetchone()['total']
-        
-        # Get unique users
-        cursor.execute("SELECT COUNT(DISTINCT user_id) as unique_users FROM activity_log")
-        unique_users = cursor.fetchone()['unique_users']
-        
-        # Get unique attractions viewed
-        cursor.execute("SELECT COUNT(DISTINCT attraction_id) as unique_attractions FROM activity_log")
-        unique_attractions = cursor.fetchone()['unique_attractions']
+        # Get all stats in a single query (more efficient)
+        cursor.execute("""
+            SELECT 
+                (SELECT COUNT(*) FROM activity_log) as total,
+                (SELECT COUNT(DISTINCT user_id) FROM activity_log) as unique_users,
+                (SELECT COUNT(DISTINCT attraction_id) FROM activity_log) as unique_attractions
+        """)
+        stats = cursor.fetchone()
         
         # Get top attractions
         cursor.execute("""
@@ -72,9 +69,9 @@ async def get_activity_stats():
         conn.close()
         
         return {
-            "total_activities": total,
-            "unique_users": unique_users,
-            "unique_attractions": unique_attractions,
+            "total_activities": stats['total'] or 0,
+            "unique_users": stats['unique_users'] or 0,
+            "unique_attractions": stats['unique_attractions'] or 0,
             "top_attractions": top_attractions
         }
     except Exception as err:

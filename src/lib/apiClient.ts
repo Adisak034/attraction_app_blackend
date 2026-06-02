@@ -1,7 +1,12 @@
 import axios, { AxiosInstance } from 'axios';
 
 // Create axios instance with base URL
-const API_BASE_URL = 'http://localhost:8000';
+// Support environment variable VITE_API_URL, or detect from current origin for server deployments
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (typeof window !== 'undefined' && window.location.origin !== 'http://localhost:3000' && window.location.origin !== 'http://127.0.0.1:3000'
+    ? window.location.origin.replace(/:\d+$/, ':8000') // Replace port with 8000 for production
+    : 'http://localhost:8000');
+
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -22,6 +27,26 @@ axiosInstance.interceptors.response.use(
     throw new Error(errorMsg);
   }
 );
+
+// Resolve image URLs against the API base URL
+export function resolveImageUrl(imageUrl: string | undefined): string | undefined {
+  if (!imageUrl) return undefined;
+  
+  // If already a full URL, return as-is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // If relative path, resolve against current origin but with port 8000
+  if (imageUrl.startsWith('/')) {
+    // Get the host (IP or domain) from current location
+    const host = window.location.hostname;
+    const protocol = window.location.protocol;
+    return `${protocol}//${host}:8000${imageUrl}`;
+  }
+  
+  return imageUrl;
+}
 
 export function apiGet(endpoint: string) {
   return axiosInstance.get(endpoint).then((res) => res.data);

@@ -83,24 +83,31 @@ try {
     }
 
     Write-Host "Starting backend with: $pythonExe $($uvicornArgs -join ' ')"
+    Write-Host ""
 
-    # In PowerShell 7+, avoid converting native stderr log lines into PowerShell errors.
+    # Redirect stderr to stdout so PowerShell doesn't treat Uvicorn logs as errors
+    # Uvicorn is a long-running process, so Ctrl+C exit codes are expected and normal
     $hasNativePref = $null -ne (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue)
+    $originalErrorAction = $ErrorActionPreference
     try {
         if ($hasNativePref) {
             $originalNativePref = $PSNativeCommandUseErrorActionPreference
             $PSNativeCommandUseErrorActionPreference = $false
         }
+        $ErrorActionPreference = 'Continue'
 
-        & $pythonExe @uvicornArgs
+        # Redirect stderr (2) to stdout (1) to prevent PowerShell error wrapping
+        & $pythonExe @uvicornArgs 2>&1 | Write-Host
     }
     finally {
+        $ErrorActionPreference = $originalErrorAction
         if ($hasNativePref) {
             $PSNativeCommandUseErrorActionPreference = $originalNativePref
         }
     }
 
-    if ($LASTEXITCODE -ne 0) {
+    # Uvicorn exits with non-zero when stopped (Ctrl+C), which is expected
+    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 130) {
         exit $LASTEXITCODE
     }
 }

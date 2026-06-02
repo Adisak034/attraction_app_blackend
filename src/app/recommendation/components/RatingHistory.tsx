@@ -32,7 +32,7 @@ export default function RatingHistory({ userId, userName, onBack }: RatingHistor
         const data = await apiGet(`/api/rating/user/${userId}`);
         setRatings(data || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'ไม่สามารถโหลดประวัติการรีวิวได้');
+        setError(err instanceof Error ? err.message : 'ไม่สามารถโหลดประวัติการให้คะแนนได้');
         console.error('Failed to fetch ratings:', err);
       } finally {
         setLoading(false);

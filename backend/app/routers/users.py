@@ -163,3 +163,69 @@ async def delete_user(id: int):
             cursor.close()
         if connection:
             connection.close()
+
+@router.post("/login", tags=["auth"])
+async def login(login_data: dict):
+    """Login with username and password - optimized endpoint"""
+    try:
+        user_name = login_data.get('user_name', '').strip()
+        password = login_data.get('password', '')
+        
+        if not user_name or not password:
+            raise HTTPException(status_code=400, detail="Username and password are required")
+        
+        connection = get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        # Query specific user by username only
+        cursor.execute(
+            "SELECT user_id, user_name, password, role FROM `user` WHERE LOWER(user_name) = LOWER(%s) LIMIT 1",
+            (user_name,)
+        )
+        user = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        
+        if not user or user['password'] != password:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+        
+        return {
+            "user_id": user['user_id'],
+            "user_name": user['user_name'],
+            "role": user.get('role', 'user')
+        }
+    
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@router.get("/check-username/{username}", tags=["auth"])
+async def check_username_exists(username: str):
+    """Check if username already exists - for registration"""
+    try:
+        if not username.strip():
+            raise HTTPException(status_code=400, detail="Username is required")
+        
+        connection = get_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        cursor.execute(
+            "SELECT user_id FROM `user` WHERE LOWER(user_name) = LOWER(%s) LIMIT 1",
+            (username.strip(),)
+        )
+        user = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        
+        return {
+            "exists": user is not None,
+            "username": username
+        }
+    
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Compass, MapPin, Star, Sparkles, Loader2, Heart, ArrowRight, User, Lock, LogIn, CheckCircle2, X, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { apiGet, apiPost } from '@/lib/apiClient';
+import { apiGet, apiPost, resolveImageUrl } from '@/lib/apiClient';
 import { clearAuthSession, getAuthSession, setAuthSession } from '@/lib/auth';
 import workBg from './assets/work_bg.png';
 import moneyBg from './assets/money_bg.png';
@@ -61,20 +61,6 @@ const CATEGORY_FILTER_ALIASES: Record<'LOVE' | 'WEALTH' | 'CAREER', string[]> = 
   LOVE: ['ความรัก'],
   WEALTH: ['โชคลาภ', 'การเงิน'],
   CAREER: ['การงาน'],
-};
-
-const BACKEND_BASE_URL = 'http://localhost:8000';
-
-const resolveImageUrl = (value?: string | null, cacheBuster?: number) => {
-  if (!value) return undefined;
-  const appendCacheBuster = (url: string) => {
-    if (!cacheBuster) return url;
-    return `${url}${url.includes('?') ? '&' : '?'}v=${cacheBuster}`;
-  };
-
-  if (/^https?:\/\//i.test(value)) return appendCacheBuster(value);
-  if (value.startsWith('/uploads/')) return appendCacheBuster(`${BACKEND_BASE_URL}${value}`);
-  return appendCacheBuster(value);
 };
 
 // Mystical Mandala Component
@@ -449,11 +435,10 @@ function App() {
         throw new Error(apiRecommendations.error);
       }
 
-      const cacheBuster = Date.now();
       const recommendations = Array.isArray(apiRecommendations?.recommendations)
         ? apiRecommendations.recommendations.map((item) => ({
             ...item,
-            image: resolveImageUrl(item.image, cacheBuster) || item.image,
+            image: resolveImageUrl(item.image),
           }))
         : [];
 
@@ -490,9 +475,9 @@ function App() {
         return;
       }
 
-      const users = await apiGet('/api/users') as Array<{ user_id: number; user_name: string; password: string }>;
-      const isDuplicate = users.some((item) => item.user_name.toLowerCase() === userName.toLowerCase());
-      if (isDuplicate) {
+      // Check if username exists using optimized endpoint
+      const checkResult = await apiGet(`/api/users/check-username/${encodeURIComponent(userName)}`) as { exists: boolean };
+      if (checkResult.exists) {
         setError('ชื่อผู้ใช้นี้มีอยู่แล้ว กรุณาใช้ชื่ออื่น');
         return;
       }
@@ -537,27 +522,24 @@ function App() {
         return;
       }
 
-      const users = await apiGet('/api/users') as Array<{ user_id: number; user_name: string; password: string; role?: string }>;
-      const matched = users.find((item) => item.user_name.toLowerCase() === inputName.toLowerCase());
+      // Use optimized login endpoint instead of fetching all users
+      const result = await apiPost('/api/users/login', {
+        user_name: inputName,
+        password: formData.password
+      }) as { user_id: number; user_name: string; role: string };
 
-      if (!matched || matched.password !== formData.password) {
-        setError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-        return;
-      }
-
-      const uId = String(matched.user_id);
-      const role = matched.role || 'user';
+      const uId = String(result.user_id);
       setUserId(uId);
-      setUserName(matched.user_name);
+      setUserName(result.user_name);
       setAuthSession({
-        user_id: matched.user_id,
-        user_name: matched.user_name,
-        role,
+        user_id: result.user_id,
+        user_name: result.user_name,
+        role: result.role || 'user',
       });
-      setIsAdminSession(role === 'admin');
+      setIsAdminSession(result.role === 'admin');
       if (rememberMe) {
         localStorage.setItem('faith_userId', uId);
-        localStorage.setItem('faith_userName', matched.user_name);
+        localStorage.setItem('faith_userName', result.user_name);
       } else {
         localStorage.removeItem('faith_userId');
         localStorage.removeItem('faith_userName');
