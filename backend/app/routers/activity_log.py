@@ -4,15 +4,17 @@ from app.schemas.schemas import (
     AttractionCreate, RatingCreate, UserCreate
 )
 
+# กำหนด router สำหรับจัดการ Activity Log (บันทึกกิจกรรมของผู้ใช้)
 router = APIRouter(prefix="/api", tags=["activity"])
 
 @router.get("/activity-logs")
 async def get_activity_logs(limit: int = 100):
-    """Get activity logs with user and attraction names"""
+    """ดึงบันทึกกิจกรรมของผู้ใช้ พร้อมชื่อผู้ใช้และสถานที่ (จำกัดจำนวน)"""
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         
+        # JOIN ตาราง user และ attraction เพื่อดึงชื่อมาแสดงแทน ID
         query = """
         SELECT 
             al.log_id,
@@ -40,12 +42,12 @@ async def get_activity_logs(limit: int = 100):
 
 @router.get("/activity-logs/stats")
 async def get_activity_stats():
-    """Get activity statistics"""
+    """ดึงสถิติภาพรวมของกิจกรรม เช่น จำนวนกิจกรรมทั้งหมด ผู้ใช้ที่ไม่ซ้ำ และสถานที่ยอดนิยม"""
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Get all stats in a single query (more efficient)
+        # ดึงสถิติทั้งหมดในคำสั่งเดียว (มีประสิทธิภาพมากกว่า)
         cursor.execute("""
             SELECT 
                 (SELECT COUNT(*) FROM activity_log) as total,
@@ -54,7 +56,7 @@ async def get_activity_stats():
         """)
         stats = cursor.fetchone()
         
-        # Get top attractions
+        # ดึงสถานที่ที่มีการเข้าชมมากที่สุด (Top 10)
         cursor.execute("""
             SELECT a.attraction_id, a.attraction_name, COUNT(*) as view_count
             FROM activity_log al
@@ -68,26 +70,29 @@ async def get_activity_stats():
         cursor.close()
         conn.close()
         
+        # รวมสถิติและสถานที่ยอดนิยมไว้ใน response เดียว
         return {
-            "total_activities": stats['total'] or 0,
-            "unique_users": stats['unique_users'] or 0,
-            "unique_attractions": stats['unique_attractions'] or 0,
-            "top_attractions": top_attractions
+            "total_activities": stats['total'] or 0,          # จำนวนกิจกรรมทั้งหมด
+            "unique_users": stats['unique_users'] or 0,        # จำนวนผู้ใช้ที่ไม่ซ้ำ
+            "unique_attractions": stats['unique_attractions'] or 0,  # จำนวนสถานที่ที่ถูกเข้าชม
+            "top_attractions": top_attractions                 # สถานที่ยอดนิยม 10 อันดับ
         }
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Database Error: {err}")
 
 @router.delete("/activity-logs/{log_id}")
 async def delete_activity_log(log_id: int):
-    """Delete an activity log entry"""
+    """ลบบันทึกกิจกรรมตาม log_id"""
     conn = None
     cursor = None
     try:
         conn = get_connection()
         cursor = conn.cursor()
         
+        # ลบ activity log ตาม ID
         cursor.execute("DELETE FROM activity_log WHERE log_id = %s", (log_id,))
         
+        # ถ้าไม่มีแถวที่ถูกลบ แสดงว่าไม่พบ log นี้
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Activity log not found")
 
@@ -100,10 +105,11 @@ async def delete_activity_log(log_id: int):
 
     except Exception as err:
         if conn:
-            conn.rollback()
+            conn.rollback()  # ยกเลิก transaction ถ้าเกิดข้อผิดพลาด
         raise HTTPException(status_code=500, detail=f"Database Error: {err}")
 
     finally:
+        # ปิด cursor และ connection เสมอ
         if cursor:
             cursor.close()
         if conn:

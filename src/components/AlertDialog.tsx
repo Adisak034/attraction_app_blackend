@@ -1,24 +1,29 @@
 import React, { createContext, useContext, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// ประเภทของ alert dialog
 export type AlertType = 'success' | 'error' | 'info' | 'warning' | 'confirm';
 
+// ค่า configuration ของ alert dialog
 export interface AlertConfig {
   type: AlertType;
   title: string;
-  text?: string;
-  confirmText?: string;
-  cancelText?: string;
-  onConfirm?: () => void;
-  onCancel?: () => void;
+  text?: string;          // ข้อความรายละเอียด (optional)
+  confirmText?: string;   // ข้อความปุ่ม confirm
+  cancelText?: string;    // ข้อความปุ่ม cancel
+  onConfirm?: () => void; // callback เมื่อกด confirm
+  onCancel?: () => void;  // callback เมื่อกด cancel
 }
 
+// ประเภทของ context สำหรับ alert
 interface AlertContextType {
   showAlert: (config: AlertConfig) => Promise<boolean>;
 }
 
+// สร้าง Context สำหรับ alert system
 const AlertContext = createContext<AlertContextType | undefined>(undefined);
 
+// Hook สำหรับเรียกใช้ alert - ต้องใช้ภายใน AlertProvider เท่านั้น
 export const useAlert = () => {
   const context = useContext(AlertContext);
   if (!context) {
@@ -27,6 +32,7 @@ export const useAlert = () => {
   return context;
 };
 
+// ฟังก์ชันคืนค่า icon และสีตามประเภทของ alert
 const getIconAndColor = (type: AlertType) => {
   switch (type) {
     case 'success':
@@ -41,6 +47,7 @@ const getIconAndColor = (type: AlertType) => {
   }
 };
 
+// Component หลักของ Alert Dialog (modal overlay)
 const AlertDialog: React.FC<AlertConfig & { isOpen: boolean; onClose: () => void }> = ({
   isOpen,
   onClose,
@@ -53,6 +60,7 @@ const AlertDialog: React.FC<AlertConfig & { isOpen: boolean; onClose: () => void
   onCancel,
 }) => {
   const { icon, bgColor, borderColor, textColor, iconBgColor } = getIconAndColor(type);
+  // warning และ confirm จะแสดงปุ่ม cancel ด้วย
   const isConfirmDialog = type === 'confirm' || type === 'warning';
 
   const handleConfirm = () => {
@@ -69,7 +77,7 @@ const AlertDialog: React.FC<AlertConfig & { isOpen: boolean; onClose: () => void
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* พื้นหลังมืด (backdrop) - กดเพื่อปิด dialog */}
           <motion.div
             className="fixed inset-0 bg-black/50 z-40"
             initial={{ opacity: 0 }}
@@ -78,7 +86,7 @@ const AlertDialog: React.FC<AlertConfig & { isOpen: boolean; onClose: () => void
             onClick={handleCancel}
           />
 
-          {/* Dialog */}
+          {/* ตัว Dialog - อยู่กลางหน้าจอ */}
           <motion.div
             className="fixed inset-0 flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -86,21 +94,22 @@ const AlertDialog: React.FC<AlertConfig & { isOpen: boolean; onClose: () => void
             exit={{ opacity: 0, scale: 0.9 }}
           >
             <div className={`${bgColor} border ${borderColor} rounded-lg shadow-xl max-w-sm w-full`}>
-              {/* Icon */}
+              {/* ไอคอนแสดงประเภท alert */}
               <div className="flex justify-center pt-6">
                 <div className={`${iconBgColor} rounded-full w-16 h-16 flex items-center justify-center text-3xl font-bold ${textColor}`}>
                   {icon}
                 </div>
               </div>
 
-              {/* Content */}
+              {/* เนื้อหา: ชื่อเรื่องและรายละเอียด */}
               <div className="text-center px-6 py-4">
                 <h2 className={`text-xl font-bold ${textColor} mb-2`}>{title}</h2>
                 {text && <p className="text-gray-600 text-sm">{text}</p>}
               </div>
 
-              {/* Buttons */}
+              {/* ปุ่มกระทำ: confirm และ cancel */}
               <div className={`flex gap-3 px-6 pb-6 ${isConfirmDialog ? 'justify-end' : 'justify-center'}`}>
+                {/* ปุ่ม cancel แสดงเฉพาะ confirm/warning dialog */}
                 {isConfirmDialog && (
                   <button
                     onClick={handleCancel}
@@ -109,6 +118,7 @@ const AlertDialog: React.FC<AlertConfig & { isOpen: boolean; onClose: () => void
                     {cancelText}
                   </button>
                 )}
+                {/* ปุ่ม confirm - สีเปลี่ยนตามประเภท alert */}
                 <button
                   onClick={handleConfirm}
                   className={`px-6 py-2 text-white rounded-lg font-medium transition-colors ${
@@ -130,11 +140,15 @@ const AlertDialog: React.FC<AlertConfig & { isOpen: boolean; onClose: () => void
   );
 };
 
+// Provider สำหรับ alert system - ครอบ component tree เพื่อให้ทุก component ใช้ showAlert ได้
 export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // เก็บรายการ alert ที่กำลังแสดงอยู่ (รองรับหลาย alert พร้อมกัน)
   const [alerts, setAlerts] = useState<(AlertConfig & { id: string; isOpen: boolean })[]>([]);
 
+  // ฟังก์ชันแสดง alert และคืน Promise ที่ resolve เมื่อผู้ใช้กด confirm/cancel
   const showAlert = (config: AlertConfig): Promise<boolean> => {
     return new Promise((resolve) => {
+      // สร้าง ID เฉพาะสำหรับ alert นี้
       const id = Math.random().toString(36).substr(2, 9);
       const alertConfig = {
         ...config,
@@ -142,19 +156,19 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isOpen: true,
         onConfirm: () => {
           config.onConfirm?.();
-          resolve(true);
-          setAlerts((prev) => prev.filter((a) => a.id !== id));
+          resolve(true); // ผู้ใช้กด confirm
+          setAlerts((prev) => prev.filter((a) => a.id !== id)); // ลบออกจากรายการ
         },
         onCancel: () => {
           config.onCancel?.();
-          resolve(false);
-          setAlerts((prev) => prev.filter((a) => a.id !== id));
+          resolve(false); // ผู้ใช้กด cancel
+          setAlerts((prev) => prev.filter((a) => a.id !== id)); // ลบออกจากรายการ
         },
       };
 
       setAlerts((prev) => [...prev, alertConfig]);
 
-      // Auto-close non-confirm alerts after 3 seconds
+      // ปิดอัตโนมัติหลัง 3 วินาที สำหรับ alert ที่ไม่ใช่ confirm dialog
       if (config.type !== 'confirm') {
         setTimeout(() => {
           setAlerts((prev) => prev.filter((a) => a.id !== id));
@@ -167,6 +181,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <AlertContext.Provider value={{ showAlert }}>
       {children}
+      {/* แสดง alert ทุกตัวที่อยู่ในรายการ */}
       {alerts.map((alert) => (
         <AlertDialog
           key={alert.id}

@@ -4,21 +4,23 @@ from fastapi.staticfiles import StaticFiles
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# โหลดตัวแปรสภาพแวดล้อมจากไฟล์ .env
 load_dotenv()
 
+# นำเข้า router ทั้งหมดของระบบ
 from app.routers import attractions, users, images, ratings, lookup_tables, activity_log, recommendation
 
+# สร้างแอปพลิเคชัน FastAPI พร้อมข้อมูลพื้นฐาน
 app = FastAPI(
     title="Temple Admin Backend",
     description="FastAPI Backend for Temple Attractions Management",
     version="1.0.0"
 )
 
-# Configure CORS - allow localhost for dev and configurable origins for server
+# ตั้งค่า CORS - อนุญาต localhost สำหรับ dev และ origin ที่กำหนดจาก environment สำหรับ server
 ALLOWED_ORIGINS = os.getenv('CORS_ORIGINS', '').split(',') if os.getenv('CORS_ORIGINS') else []
 
-# Always include localhost for development
+# กำหนด origin ที่อนุญาตสำหรับการพัฒนา (localhost ทุก port ที่ใช้งาน)
 DEFAULT_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -35,12 +37,14 @@ DEFAULT_ORIGINS = [
     "http://localhost"
 ]
 
+# รวม origin ค่าเริ่มต้นกับ origin ที่กำหนดจาก environment
 CORS_ORIGINS = DEFAULT_ORIGINS + [origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()]
 
-# Development: Allow all origins for easier testing across different IPs/machines
+# โหมดพัฒนา: อนุญาตทุก origin เพื่อให้ทดสอบง่ายจากต่าง IP/เครื่อง
 if os.getenv('ENVIRONMENT', 'development').lower() == 'development':
     CORS_ORIGINS = ["*"]
 
+# เพิ่ม middleware สำหรับจัดการ CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -49,36 +53,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files for uploads (project-root/public/uploads)
+# กำหนด path สำหรับเก็บไฟล์ที่อัปโหลด (อยู่ที่ project-root/public/uploads)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 UPLOADS_DIR = os.path.join(PROJECT_ROOT, "public", "uploads")
-os.makedirs(UPLOADS_DIR, exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)  # สร้างโฟลเดอร์ถ้ายังไม่มี
 
+# mount โฟลเดอร์ uploads เพื่อให้เข้าถึงไฟล์รูปภาพผ่าน URL /uploads/...
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
-# Include routers
-app.include_router(attractions.router)
-app.include_router(users.router)
-app.include_router(images.router)
-app.include_router(ratings.router)
-app.include_router(lookup_tables.router)
-app.include_router(activity_log.router)
-app.include_router(recommendation.router)
+# ลงทะเบียน router ทั้งหมดเข้ากับแอป
+app.include_router(attractions.router)    # router สถานที่/วัด
+app.include_router(users.router)          # router ผู้ใช้งาน
+app.include_router(images.router)         # router รูปภาพ
+app.include_router(ratings.router)        # router คะแนนรีวิว
+app.include_router(lookup_tables.router)  # router ตารางข้อมูลอ้างอิง
+app.include_router(activity_log.router)   # router บันทึกกิจกรรม
+app.include_router(recommendation.router) # router ระบบแนะนำ
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """ตรวจสอบสถานะการทำงานของ Backend"""
     return {"status": "ok", "message": "Backend is running"}
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """หน้าหลักของ API แสดงข้อมูลพื้นฐาน"""
     return {
         "message": "Temple Admin Backend API",
         "docs": "/docs",
         "version": "1.0.0"
     }
 
+# รันเซิร์ฟเวอร์โดยตรงเมื่อรันไฟล์นี้
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -3,16 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { MapIcon, Users, ImageIcon, Star, Activity, Brain } from 'lucide-react';
 import { apiGet } from '@/lib/apiClient';
 
+// โครงสร้างข้อมูลสถิติภาพรวมของระบบ
 interface Stats {
-  total_attractions: number;
-  total_users: number;
-  total_images: number;
-  total_ratings: number;
-  rating_work_avg: number;
-  rating_finance_avg: number;
-  rating_love_avg: number;
+  total_attractions: number;     // จำนวนสถานที่ทั้งหมด
+  total_users: number;           // จำนวนผู้ใช้ทั้งหมด
+  total_images: number;          // จำนวนสถานที่ที่มีรูปภาพ
+  total_ratings: number;         // จำนวนคะแนนรีวิวทั้งหมด
+  rating_work_avg: number;       // คะแนนเฉลี่ยดด้านการงาน
+  rating_finance_avg: number;    // คะแนนเฉลี่ยดด้านการเงิน
+  rating_love_avg: number;       // คะแนนเฉลี่ยดด้านความรัก
 }
 
+// ข้อมูลคะแนนรีวิวสำหรับคำนวณค่าเฉลี่ย 
 interface RatingData {
   rating_id: number;
   rating_work: number;
@@ -20,15 +22,17 @@ interface RatingData {
   rating_love: number;
 }
 
+// สถิติจำนวนสถานที่ตามหมวดหมู่
 interface AttractionCategory {
   category_name: string;
   count: number;
 }
 
+// โครงสร้างข้อมูลสถานที่สำหรับนับจำนวนรูปภาพ
 interface AttractionRow {
   attraction_id: number;
   attraction_name: string;
-  attraction_image?: string | null;
+  attraction_image?: string | null;  // null = ไม่มีรูป
   categories?: string | null;
 }
 
@@ -49,7 +53,7 @@ export default function AdminPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch data from all endpoints to calculate statistics
+        // ดึงข้อมูลจาก API ทั้งหมดพร้อมกันเพื่อคำนวณสถิติ
         const [attractions, users, ratings] = await Promise.all([
           apiGet('/api/attraction'),
           apiGet('/api/users'),
@@ -63,10 +67,10 @@ export default function AdminPage() {
         let total_users = users.length || 0;
         let total_ratings = ratings.length || 0;
         
-        // Count images (from attraction_image field)
+        // นับสถานที่ที่มีรูปภาพ (ตรวจจาก field attraction_image)
         const total_images = attractionRows.filter((a) => a.attraction_image).length || 0;
 
-        // Calculate attractions by category
+        // นับสถานที่ตามหมวดหมู่ โดย split ด้วยเครื่องหมายจุลภาค
         const categoryMap = new Map<string, number>();
         attractionRows.forEach((row) => {
           const rawCategories = row.categories || '';
@@ -91,7 +95,7 @@ export default function AdminPage() {
 
         setCategoryStats(sortedCategoryStats);
 
-        // Calculate average ratings
+        // คำนวณคะแนนเฉลี่ยของแต่ละด้าน
         let avg_work = 0, avg_finance = 0, avg_love = 0;
         if (total_ratings > 0) {
           const sum_work = ratings.reduce((acc: number, r: any) => acc + (r.rating_work || 0), 0);
