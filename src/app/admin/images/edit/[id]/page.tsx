@@ -35,7 +35,7 @@ export default function EditImagePage() {
   const navigate = useNavigate();
   const params = useParams();
   const imageId = params.id;
-  
+
   const [formData, setFormData] = useState({
     Image_name: '',
     attraction_id: '',

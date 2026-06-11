@@ -45,10 +45,12 @@ if os.getenv('ENVIRONMENT', 'development').lower() == 'development':
     CORS_ORIGINS = ["*"]
 
 # เพิ่ม middleware สำหรับจัดการ CORS
+# หมายเหตุ: allow_credentials=True ใช้ร่วมกับ allow_origins=["*"] ไม่ได้ตาม CORS spec
+_use_credentials = CORS_ORIGINS != ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=_use_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
