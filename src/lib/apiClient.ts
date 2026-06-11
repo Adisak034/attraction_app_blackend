@@ -1,22 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
 
-// กำหนด URL ฐานสำหรับเรียก API
-// ถ้า VITE_API_URL ถูกตั้งไว้ (ไม่ว่าง) ให้ใช้ค่านั้น
-// ถ้าไม่มี ให้ detect จาก hostname ปัจจุบัน + port 8000 (รองรับทั้ง dev และ server)
-function getApiBaseUrl(): string {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl && envUrl.trim()) {
-    return envUrl.trim();
-  }
-  if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location;
-    // ใช้ hostname (ไม่มี port) แล้วต่อ :8000 เสมอ
-    return `${protocol}//${hostname}:8000`;
-  }
-  return 'http://localhost:8000';
-}
+// กำหนด URL ฐานสำหรับเรียก API — ตั้งค่าใน VITE_API_URL ของไฟล์ .env
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
-export const API_BASE_URL = getApiBaseUrl();
 
 // สร้าง axios instance พร้อมค่าตั้งต้น
 const axiosInstance: AxiosInstance = axios.create({
@@ -50,15 +36,13 @@ export function resolveImageUrl(imageUrl: string | undefined): string | undefine
     return imageUrl;
   }
 
-  // ถ้าเป็น relative path (ขึ้นต้นด้วย /) ให้ต่อกับ host ปัจจุบันที่ port 8000
+  // ถ้าเป็น relative path (ขึ้นต้นด้วย /) ให้ต่อกับ API_BASE_URL ที่ตั้งค่าไว้ใน VITE_API_URL
   if (imageUrl.startsWith('/')) {
-    // ดึง hostname จาก URL ปัจจุบัน (ใช้ IP หรือ domain ได้)
-    const host = window.location.hostname;
-    const protocol = window.location.protocol;
-    return `${protocol}//${host}:8000${imageUrl}`;
+    return `${API_BASE_URL}${imageUrl}`;
   }
 
-  return imageUrl;
+  return `${API_BASE_URL}/${imageUrl}`;
+
 }
 
 // ฟังก์ชัน HTTP GET - ดึงข้อมูลจาก API
