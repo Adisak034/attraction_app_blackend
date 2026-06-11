@@ -128,7 +128,7 @@ export default function EditImagePage() {
       // If file is selected, upload it first
       if (selectedFile) {
         const uploadResult = await apiUploadFile('/api/image/upload', selectedFile, {
-          attraction_id: formData.attraction_id,
+          attraction_id: String(parseInt(formData.attraction_id, 10)),
         });
         imageUrl = uploadResult.image_url;
       }
@@ -139,7 +139,7 @@ export default function EditImagePage() {
       });
 
       await showSuccess('แก้ไขสำเร็จ', `อัปเดตรูปภาพของ "${attractionName}" เรียบร้อยแล้ว`);
-      navigate('/admin/images', { replace: true });
+      navigate(`/admin/images?editedId=${imageId}`, { replace: true });
     } catch (err) {
       await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     } finally {
@@ -267,7 +267,7 @@ export default function EditImagePage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/admin/images', { replace: true })}
+              onClick={() => navigate(`/admin/images?editedId=${imageId}`, { replace: true })}
               disabled={uploading}
               className="flex-1 bg-gray-400 text-white px-6 py-3 rounded-md shadow-md hover:bg-gray-500 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
             >

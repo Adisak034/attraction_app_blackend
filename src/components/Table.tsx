@@ -1,26 +1,30 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
+// นิยาม column ของตาราง
 interface Column {
-  key: string;
-  label: string;
-  sortable?: boolean;
-  render?: (value: any, row: any) => React.ReactNode;
-  className?: string;
+  key: string;                                    // ชื่อ key จากข้อมูล
+  label: string;                                  // ชื่อที่แสดงใน header
+  sortable?: boolean;                             // เปิดให้เรียงลำดับได้หรือไม่
+  render?: (value: any, row: any) => React.ReactNode; // custom render สำหรับ cell
+  className?: string;                             // CSS class เพิ่มเติม
 }
 
+// Props ของ Table component
 interface TableProps<T> {
-  columns: Column[];
-  data: T[];
-  pageSize?: number;
-  pageSizeOptions?: number[];
-  searchable?: boolean;
-  searchPlaceholder?: string;
-  onSearch?: (term: string) => void;
-  initialSortKey?: string;
-  initialSortDir?: 'asc' | 'desc';
-  className?: string;
-  renderRow?: (row: T, index: number) => React.ReactNode;
+  columns: Column[];                              // คำนิยาม column ทั้งหมด
+  data: T[];                                      // ข้อมูลทั้งหมด
+  pageSize?: number;                              // จำนวนแถวต่อหน้า (ค่าเริ่มต้น)
+  pageSizeOptions?: number[];                     // ตัวเลือกจำนวนแถวต่อหน้า
+  searchable?: boolean;                           // แสดงช่องค้นหาหรือไม่
+  searchPlaceholder?: string;                     // placeholder ของช่องค้นหา
+  onSearch?: (term: string) => void;              // callback เมื่อค้นหา
+  initialSortKey?: string;                        // column เริ่มต้นที่ใช้เรียงลำดับ
+  initialSortDir?: 'asc' | 'desc';               // ทิศทางเรียงลำดับเริ่มต้น
+  className?: string;                             // CSS class เพิ่มเติมของ container
+  renderRow?: (row: T, index: number) => React.ReactNode; // custom render แถว
+  highlightedRowId?: number | null;               // ID ของแถวที่ต้องการ highlight
+  rowIdKey?: string;                              // ชื่อ key ที่ใช้ระบุ ID ของแถว
 }
 
 export const Table = React.forwardRef<HTMLTableElement, TableProps<any>>(
@@ -37,16 +41,19 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps<any>>(
       initialSortDir = 'asc',
       className = '',
       renderRow,
+      highlightedRowId = null,
+      rowIdKey = 'id',
     },
     ref
   ) => {
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageLength, setPageLength] = useState(pageSize);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [sortKey, setSortKey] = useState<string | null>(initialSortKey || null);
-    const [sortDir, setSortDir] = useState<'asc' | 'desc'>(initialSortDir);
+    // State สำหรับจัดการ pagination, search, sort
+    const [currentPage, setCurrentPage] = useState(1);                          // หน้าปัจจุบัน
+    const [pageLength, setPageLength] = useState(pageSize);                     // จำนวนแถวต่อหน้า
+    const [searchTerm, setSearchTerm] = useState('');                           // คำค้นหา
+    const [sortKey, setSortKey] = useState<string | null>(initialSortKey || null); // column ที่ใช้เรียงลำดับ
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>(initialSortDir);    // ทิศทางการเรียงลำดับ
 
-    // Filter data based on search term
+    // กรองข้อมูลตามคำค้นหา - ค้นหาในทุก column
     const filteredData = useMemo(() => {
       if (!searchTerm.trim()) return data;
 
@@ -59,30 +66,31 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps<any>>(
       });
     }, [data, searchTerm, columns]);
 
-    // Sort data
+    // เรียงลำดับข้อมูลตาม column และทิศทางที่เลือก
     const sortedData = useMemo(() => {
-      if (!sortKey) return filteredData;
+      if (!sortKey) return filteredData; // ถ้าไม่มี column ที่เลือก คืนข้อมูลตามที่กรองมา
 
       return [...filteredData].sort((a, b) => {
         const aVal = a[sortKey];
         const bVal = b[sortKey];
 
+        // จัดการค่า null
         if (aVal == null && bVal == null) return 0;
         if (aVal == null) return 1;
         if (bVal == null) return -1;
 
         let comparison = 0;
         if (typeof aVal === 'number' && typeof bVal === 'number') {
-          comparison = aVal - bVal;
+          comparison = aVal - bVal; // เรียงตัวเลข
         } else {
-          comparison = String(aVal).localeCompare(String(bVal));
+          comparison = String(aVal).localeCompare(String(bVal)); // เรียง string (รองรับภาษาไทย)
         }
 
         return sortDir === 'asc' ? comparison : -comparison;
       });
     }, [filteredData, sortKey, sortDir]);
 
-    // Pagination
+    // คำนวณ pagination
     const totalPages = Math.ceil(sortedData.length / pageLength);
     const paginatedData = useMemo(() => {
       const start = (currentPage - 1) * pageLength;
@@ -90,23 +98,39 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps<any>>(
       return sortedData.slice(start, end);
     }, [sortedData, currentPage, pageLength]);
 
+    // เมื่อมีแถวที่ต้อง highlight ให้นำทางไปหน้าที่มีแถวนั้นอัตโนมัติ
+    useEffect(() => {
+      if (highlightedRowId === null) return;
+
+      const highlightedIndex = sortedData.findIndex(
+        (row) => row[rowIdKey] === highlightedRowId
+      );
+
+      if (highlightedIndex !== -1) {
+        const pageNumber = Math.floor(highlightedIndex / pageLength) + 1;
+        setCurrentPage(pageNumber); // เปลี่ยนไปหน้าที่มีแถวนั้น
+      }
+    }, [highlightedRowId, sortedData, pageLength, rowIdKey]);
+
     const handleSearch = (value: string) => {
       setSearchTerm(value);
       setCurrentPage(1);
       onSearch?.(value);
     };
 
+    // สลับทิศทาง sort เมื่อกด column เดิม หรือเปลี่ยน column ใหม่
     const handleSort = (key: string) => {
       if (!columns.find((col) => col.key === key)?.sortable) return;
 
       if (sortKey === key) {
-        setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+        setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); // สลับ asc/desc
       } else {
-        setSortKey(key);
-        setSortDir('asc');
+        setSortKey(key);    // เปลี่ยน column ที่ sort
+        setSortDir('asc');  // เริ่มจาก asc เสมอ
       }
     };
 
+    // เมื่อเปลี่ยนจำนวนแถวต่อหน้า ให้กลับไปหน้า 1
     const handlePageLengthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       const newLength = Number(e.target.value);
       setPageLength(newLength);
@@ -163,7 +187,14 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps<any>>(
                   renderRow ? (
                     <React.Fragment key={index}>{renderRow(row, index)}</React.Fragment>
                   ) : (
-                    <tr key={index} className="border-b hover:bg-gray-50 transition">
+                    <tr
+                      key={index}
+                      className={`border-b hover:bg-gray-50 transition ${
+                        highlightedRowId !== null && row[rowIdKey] === highlightedRowId
+                          ? 'bg-yellow-100'
+                          : ''
+                      }`}
+                    >
                       {columns.map((col) => (
                         <td key={col.key} className={`px-4 py-3 ${col.className || ''}`}>
                           {col.render ? col.render(row[col.key], row) : row[col.key]}

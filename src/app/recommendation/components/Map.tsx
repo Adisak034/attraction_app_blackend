@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, InfoWindow } from '@react-google-maps/api';
 import { Loader2, Star, Navigation } from 'lucide-react';
+import { resolveImageUrl } from '@/lib/apiClient';
 
 const MAP_LIBRARIES: ('marker')[] = ['marker'];
 
@@ -133,6 +134,31 @@ const isValidLatLng = (lat: number, lng: number): boolean => {
     // Treat (0, 0) as invalid app data in this project.
     if (lat === 0 && lng === 0) return false;
     return true;
+};
+
+const openGoogleMapsNavigation = (lat: number, lng: number, placeName: string) => {
+    // Try to open native Google Maps app with deep linking
+    const appUrl = `comgooglemaps://?daddr=${lat},${lng}&center=${lat},${lng}&q=${encodeURIComponent(placeName)}`;
+    const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+    // Try to open the app
+    const appLink = document.createElement('a');
+    appLink.href = appUrl;
+    appLink.style.display = 'none';
+    document.body.appendChild(appLink);
+    appLink.click();
+    document.body.removeChild(appLink);
+
+    // Set a timeout to open web version as fallback
+    // If the app is installed, it will open before the timeout
+    setTimeout(() => {
+        // Check if app was opened by checking window visibility
+        const hidden = document.hidden;
+        if (!hidden) {
+            // Window is still visible, app likely not installed, open web version
+            window.open(webUrl, '_blank');
+        }
+    }, 500);
 };
 
 const Map: React.FC<MapProps> = ({ recommendations, className }) => {
@@ -281,13 +307,12 @@ const Map: React.FC<MapProps> = ({ recommendations, className }) => {
                         onCloseClick={() => setSelectedPlace(null)}
                         options={{
                             pixelOffset: new window.google.maps.Size(0, -30),
-                            // maxWidth: 300 // Can control width if needed
                         }}
                     >
                         <div className="p-2 min-w-[200px] text-[#1A0404]">
                             {selectedPlace.image && !brokenImageIds.has(selectedPlace.id) ? (
                                 <img
-                                    src={selectedPlace.image}
+                                    src={resolveImageUrl(selectedPlace.image)}
                                     alt={selectedPlace.name}
                                     className="w-full h-28 object-cover rounded-md mb-2"
                                     onError={() => {
@@ -314,10 +339,12 @@ const Map: React.FC<MapProps> = ({ recommendations, className }) => {
                             <p className="text-xs text-gray-600 mb-3">{selectedPlace.category}</p>
 
                             <a
-                                href={`https://www.google.com/maps/dir/?api=1&destination=${selectedPlace.lat},${selectedPlace.lng}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-2 w-full bg-[#1A0404] text-faith-gold py-2 rounded-lg text-xs font-bold hover:bg-black transition-colors"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    openGoogleMapsNavigation(selectedPlace.lat, selectedPlace.lng, selectedPlace.name);
+                                }}
+                                href="#"
+                                className="flex items-center justify-center gap-2 w-full bg-[#1A0404] text-faith-gold py-2 rounded-lg text-xs font-bold hover:bg-black transition-colors cursor-pointer"
                             >
                                 <Navigation size={14} />
                                 นำทาง

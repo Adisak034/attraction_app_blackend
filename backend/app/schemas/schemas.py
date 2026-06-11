@@ -2,89 +2,114 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date
 
-# Attraction Schemas
+# ===== Schemas สำหรับสถานที่ (Attraction) =====
+
 class CategoryItem(BaseModel):
+    """Schema สำหรับรับ ID หมวดหมู่"""
     category_id: int
 
 class AttractionBase(BaseModel):
-    attraction_name: str
-    type_id: Optional[int] = None
-    district_id: Optional[int] = None
-    sect_id: Optional[int] = None
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    sacred_obj: Optional[str] = None
-    offering: Optional[str] = None
+    """Schema พื้นฐานของสถานที่ - ใช้เป็น base class"""
+    attraction_name: str                    # ชื่อสถานที่
+    type_id: Optional[int] = None           # รหัสประเภทสถานที่
+    district_id: Optional[int] = None       # รหัสอำเภอ/เขต
+    sect_id: Optional[int] = None           # รหัสนิกาย
+    lat: Optional[float] = None             # ละติจูด
+    lng: Optional[float] = None             # ลองจิจูด
+    sacred_obj: Optional[str] = None        # สิ่งศักดิ์สิทธิ์
+    offering: Optional[str] = None          # ของบน/ของไหว้
 
 class AttractionCreate(AttractionBase):
-    category_ids: List[int] = []
+    """Schema สำหรับสร้างสถานที่ใหม่ - รับ ID หมวดหมู่เพิ่มเติม"""
+    category_ids: List[int] = []            # รายการ ID หมวดหมู่
 
 class AttractionUpdate(AttractionBase):
-    category_ids: List[int] = []
+    """Schema สำหรับอัปเดตข้อมูลสถานที่"""
+    category_ids: List[int] = []            # รายการ ID หมวดหมู่ที่ต้องการอัปเดต
 
 class AttractionResponse(AttractionBase):
-    attraction_id: int
-    categories: Optional[str] = None
+    """Schema สำหรับส่งข้อมูลสถานที่กลับไปยัง client"""
+    attraction_id: int                      # ID ของสถานที่
+    categories: Optional[str] = None        # ชื่อหมวดหมู่แบบ string (คั่นด้วยเครื่องหมายจุลภาค)
 
-# User Schemas
+# ===== Schemas สำหรับผู้ใช้งาน (User) =====
+
 class UserBase(BaseModel):
-    user_name: str
-    password: Optional[str] = None
-    role: Optional[str] = "user"
+    """Schema พื้นฐานของผู้ใช้งาน"""
+    user_name: str                          # ชื่อผู้ใช้
+    password: Optional[str] = None          # รหัสผ่าน
+    role: Optional[str] = "user"            # บทบาท (user/admin)
 
 class UserCreate(UserBase):
-    password: str
+    """Schema สำหรับสร้างผู้ใช้ใหม่ - รหัสผ่านต้องระบุ"""
+    password: str                           # รหัสผ่าน (บังคับ)
 
 class UserUpdate(BaseModel):
-    user_name: Optional[str] = None
-    password: Optional[str] = None
-    role: Optional[str] = None
+    """Schema สำหรับอัปเดตข้อมูลผู้ใช้ - ทุก field เป็น optional"""
+    user_name: Optional[str] = None         # ชื่อผู้ใช้ใหม่
+    password: Optional[str] = None          # รหัสผ่านใหม่
+    role: Optional[str] = None              # บทบาทใหม่
 
 class UserResponse(UserBase):
-    user_id: int
+    """Schema สำหรับส่งข้อมูลผู้ใช้กลับไปยัง client"""
+    user_id: int                            # ID ผู้ใช้
 
-# Image Schemas
+# ===== Schemas สำหรับรูปภาพ (Image) =====
+
 class ImageBase(BaseModel):
-    Image_name: str
-    attraction_id: int
+    """Schema พื้นฐานของรูปภาพ"""
+    Image_name: str                         # ชื่อไฟล์หรือ path รูปภาพ
+    attraction_id: int                      # ID ของสถานที่ที่รูปนี้เป็นของ
 
 class ImageCreate(ImageBase):
+    """Schema สำหรับเพิ่มรูปภาพใหม่"""
     pass
 
 class ImageUpdate(BaseModel):
-    Image_name: Optional[str] = None
-    attraction_id: Optional[int] = None
+    """Schema สำหรับอัปเดตรูปภาพ"""
+    Image_name: Optional[str] = None        # ชื่อไฟล์หรือ path ใหม่
+    attraction_id: Optional[int] = None     # ID สถานที่ใหม่
 
 class ImageResponse(ImageBase):
-    image_id: int
+    """Schema สำหรับส่งข้อมูลรูปภาพกลับไปยัง client"""
+    image_id: int                           # ID รูปภาพ
 
-# Rating Schemas
+# ===== Schemas สำหรับคะแนนรีวิว (Rating) =====
+
 class RatingBase(BaseModel):
-    user_id: int
-    attraction_id: int
-    rating_work: Optional[int] = 0
-    rating_finance: Optional[int] = 0
-    rating_love: Optional[int] = 0
+    """Schema พื้นฐานของคะแนนรีวิว"""
+    user_id: int                            # ID ผู้ใช้ที่ให้คะแนน
+    attraction_id: int                      # ID สถานที่ที่ถูกให้คะแนน
+    rating_work: Optional[int] = 0          # คะแนนด้านการงาน (0-5)
+    rating_finance: Optional[int] = 0       # คะแนนด้านการเงิน/โชคลาภ (0-5)
+    rating_love: Optional[int] = 0          # คะแนนด้านความรัก (0-5)
 
 class RatingCreate(RatingBase):
+    """Schema สำหรับสร้างคะแนนรีวิวใหม่"""
     pass
 
 class RatingResponse(RatingBase):
-    rating_id: int
+    """Schema สำหรับส่งข้อมูลคะแนนรีวิวกลับไปยัง client"""
+    rating_id: int                          # ID คะแนนรีวิว
 
-# Lookup Table Schemas
+# ===== Schemas สำหรับตารางข้อมูลอ้างอิง (Lookup Tables) =====
+
 class CategoryResponse(BaseModel):
-    category_id: int
-    category_name: str
+    """Schema สำหรับข้อมูลหมวดหมู่"""
+    category_id: int                        # ID หมวดหมู่
+    category_name: str                      # ชื่อหมวดหมู่
 
 class DistrictResponse(BaseModel):
-    district_id: int
-    district_name: str
+    """Schema สำหรับข้อมูลอำเภอ/เขต"""
+    district_id: int                        # ID อำเภอ
+    district_name: str                      # ชื่ออำเภอ
 
 class TypeResponse(BaseModel):
-    type_id: int
-    type_name: str
+    """Schema สำหรับข้อมูลประเภทสถานที่"""
+    type_id: int                            # ID ประเภท
+    type_name: str                          # ชื่อประเภท
 
 class SectResponse(BaseModel):
-    sect_id: int
-    sect_name: str
+    """Schema สำหรับข้อมูลนิกาย"""
+    sect_id: int                            # ID นิกาย
+    sect_name: str                          # ชื่อนิกาย

@@ -2,15 +2,17 @@ from fastapi import APIRouter, HTTPException
 from app.core.database import get_connection
 from typing import List
 
+# กำหนด router สำหรับดึงข้อมูลตารางอ้างอิง (Lookup Tables)
 router = APIRouter(prefix="/api", tags=["lookup-tables"])
 
 @router.get("/category", response_model=List[dict])
 async def get_categories():
-    """Get all categories"""
+    """ดึงข้อมูลหมวดหมู่ทั้งหมด (เช่น การงาน ความรัก โชคลาภ)"""
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
         
+        # ดึง ID และชื่อหมวดหมู่ทั้งหมด
         cursor.execute("SELECT category_id, category_name FROM category")
         rows = cursor.fetchall()
         cursor.close()
@@ -23,11 +25,12 @@ async def get_categories():
 
 @router.get("/district", response_model=List[dict])
 async def get_districts():
-    """Get all districts"""
+    """ดึงข้อมูลอำเภอ/เขตทั้งหมด"""
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
         
+        # ดึง ID และชื่ออำเภอทั้งหมด
         cursor.execute("SELECT district_id, district_name FROM district")
         rows = cursor.fetchall()
         cursor.close()
@@ -40,11 +43,12 @@ async def get_districts():
 
 @router.get("/type", response_model=List[dict])
 async def get_types():
-    """Get all attraction types"""
+    """ดึงข้อมูลประเภทสถานที่ทั้งหมด (เช่น วัด ศาล เจดีย์)"""
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
         
+        # ดึง ID และชื่อประเภทสถานที่ทั้งหมด
         cursor.execute("SELECT type_id, type_name FROM type")
         rows = cursor.fetchall()
         cursor.close()
@@ -57,11 +61,12 @@ async def get_types():
 
 @router.get("/sect", response_model=List[dict])
 async def get_sects():
-    """Get all sects"""
+    """ดึงข้อมูลนิกายทั้งหมด (เช่น เถรวาท มหายาน)"""
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
         
+        # ดึง ID และชื่อนิกายทั้งหมด
         cursor.execute("SELECT sect_id, sect_name FROM sect")
         rows = cursor.fetchall()
         cursor.close()

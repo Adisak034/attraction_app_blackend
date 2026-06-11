@@ -167,6 +167,92 @@ Note: Check the terminal output when `npm run dev` starts to see which port is a
 - **Ratings** - View visitor ratings for attractions
 - **Categories** - Browse attraction categories
 
+## Step 6: Server Deployment & Port Forwarding
+
+### Setup for Remote Server (Port Forwarding)
+
+If deploying to a server with port forwarding or on a different machine:
+
+#### Frontend Configuration (.env.local)
+Set `VITE_API_URL` to your server's backend address:
+
+```env
+# For IP address access
+VITE_API_URL=http://192.168.1.100:8000
+
+# For domain access
+VITE_API_URL=https://example.com:8000
+
+# For default port (80/443)
+VITE_API_URL=https://example.com
+```
+
+#### Backend Configuration
+Set `CORS_ORIGINS` environment variable with frontend URLs (comma-separated):
+
+**Windows PowerShell:**
+```powershell
+$env:CORS_ORIGINS = "http://192.168.1.100:3000,https://example.com"
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+**Linux/macOS:**
+```bash
+export CORS_ORIGINS="http://192.168.1.100:3000,https://example.com"
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+#### Run Frontend on Server
+```bash
+npm run build           # Build optimized production version
+npm run preview         # Test the build locally first
+
+# Or deploy to production server
+# Copy built 'dist/' to your web server (nginx, apache, etc.)
+```
+
+#### Example: Using Nginx as Reverse Proxy
+
+```nginx
+# Frontend
+server {
+    listen 80;
+    server_name example.com;
+    root /path/to/dist;
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# Backend
+server {
+    listen 8000;
+    location / {
+        proxy_pass http://localhost:8000;
+    }
+}
+```
+
+#### Test Connection
+1. From the server machine, open browser to `http://192.168.1.100:3000` (or your domain)
+2. Check browser DevTools Console for any CORS errors
+3. Verify backend responds: `http://192.168.1.100:8000/health`
+
+### Troubleshooting Port Forwarding
+
+**CORS Error in Browser Console?**
+- Ensure `CORS_ORIGINS` environment variable includes your frontend URL
+- Restart backend after changing environment variables
+
+**Connection Refused?**
+- Check firewall settings on server (ports 3000, 8000 must be open)
+- Verify backend is running: `curl http://localhost:8000/health`
+
+**Wrong API Address?**
+- Verify `.env.local` has correct `VITE_API_URL`
+- Clear browser cache or use Incognito mode
+- Rebuild frontend: `npm run build`
+
 ## Troubleshooting
 
 ### Backend: "ModuleNotFoundError: No module named 'app'"

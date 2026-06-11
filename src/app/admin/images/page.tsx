@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Table } from '@/components/Table';
 import { apiGet } from '@/lib/apiClient';
@@ -38,6 +38,8 @@ export default function ImageAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [imageVersion, setImageVersion] = useState<number>(Date.now());
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const [searchParams] = useSearchParams();
 
   const fetchData = async () => {
     try {
@@ -64,6 +66,19 @@ export default function ImageAdminPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const editedId = searchParams.get('editedId');
+    if (editedId) {
+      const id = parseInt(editedId, 10);
+      if (Number.isFinite(id)) {
+        setHighlightedId(id);
+        // Clear the highlight after 3 seconds
+        const timer = setTimeout(() => setHighlightedId(null), 3000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [searchParams]);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -121,6 +136,8 @@ export default function ImageAdminPage() {
             <Table
               ref={tableRef}
               data={images}
+              rowIdKey="attraction_id"
+              highlightedRowId={highlightedId}
               columns={[
                 { key: 'attraction_id', label: 'ID', sortable: true },
                 { key: 'attraction_name', label: 'Name', sortable: true },
@@ -139,17 +156,17 @@ export default function ImageAdminPage() {
                     ),
                 },
                 {
-                  key: 'attraction_image',
+                  key: 'attraction_image_url',
                   label: 'Image URL',
-                  render: (value: string | null) =>
-                    value ? (
+                  render: (_, row: AttractionWithImage) =>
+                    row.attraction_image ? (
                       <a
-                        href={resolveImageUrl(value, imageVersion)}
+                        href={resolveImageUrl(row.attraction_image, imageVersion)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
                       >
-                        {value.length > 40 ? `${value.slice(0, 40)}...` : value}
+                        {row.attraction_image.length > 40 ? `${row.attraction_image.slice(0, 40)}...` : row.attraction_image}
                       </a>
                     ) : (
                       <span className="text-gray-400">No URL</span>

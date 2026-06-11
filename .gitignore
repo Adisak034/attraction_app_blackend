@@ -33,11 +33,11 @@ __pycache__/
 **/__pycache__/
 *.py[cod]
 
-# Uploaded files
-public/uploads/*
-!public/uploads/.gitkeep
-!public/uploads/mockup.png
-!mockup.png
+# Uploaded files - อนุญาตรูปภาพทั้งหมดใน public/uploads
+# public/uploads/*
+# !public/uploads/.gitkeep
+# !public/uploads/mockup.png
+# !mockup.png
 
 # Testing
 /coverage

@@ -66,7 +66,7 @@ export default function EditUserPage() {
         role: formData.role || null,
       });
       await showSuccess('แก้ไขสำเร็จ', `แก้ไขข้อมูลผู้ใช้ "${formData.user_name.trim()}" เรียบร้อยแล้ว`);
-      navigate('/admin/users', { replace: true });
+      navigate(`/admin/users?editedId=${userId}`, { replace: true });
     } catch (err) {
       await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
@@ -138,7 +138,7 @@ export default function EditUserPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/admin/users', { replace: true })}
+              onClick={() => navigate(`/admin/users?editedId=${userId}`, { replace: true })}
               className="flex-1 bg-gray-400 text-white px-6 py-3 rounded-md shadow-md hover:bg-gray-500 font-semibold"
             >
               Cancel

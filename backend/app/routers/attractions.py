@@ -5,15 +5,17 @@ from app.schemas.schemas import (
 )
 from typing import List
 
+# กำหนด router สำหรับจัดการข้อมูลสถานที่/วัด
 router = APIRouter(prefix="/api/attraction", tags=["attractions"])
 
 @router.get("", response_model=List[dict])
 async def get_attractions():
-    """Get all attractions with their categories"""
+    """ดึงข้อมูลสถานที่ทั้งหมดพร้อมหมวดหมู่"""
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
         
+        # Query ดึงข้อมูลสถานที่ทั้งหมด พร้อม JOIN ตารางหมวดหมู่
         query = """
             SELECT 
                 a.attraction_id, 
@@ -34,7 +36,7 @@ async def get_attractions():
         """
         
         cursor.execute(query)
-        rows = cursor.fetchall()
+        rows = cursor.fetchall()  # ดึงข้อมูลทั้งหมด
         cursor.close()
         connection.close()
         
@@ -45,16 +47,16 @@ async def get_attractions():
 
 @router.post("", status_code=201)
 async def create_attraction(attraction: AttractionCreate):
-    """Create a new attraction and link it to categories"""
+    """สร้างสถานที่ใหม่และเชื่อมโยงกับหมวดหมู่"""
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
         
-        # Validate input
+        # ตรวจสอบข้อมูลที่จำเป็น
         if not attraction.attraction_name or not isinstance(attraction.category_ids, list):
             raise HTTPException(status_code=400, detail="Missing required fields")
         
-        # Insert attraction
+        # บันทึกข้อมูลสถานที่ลงฐานข้อมูล
         insert_query = """
             INSERT INTO attraction 
             (attraction_name, type_id, district_id, sect_id, lat, lng, sacred_obj, offering)
@@ -72,9 +74,10 @@ async def create_attraction(attraction: AttractionCreate):
             attraction.offering
         ))
         
+        # ดึง ID ของสถานที่ที่เพิ่งสร้าง
         attraction_id = cursor.lastrowid
         
-        # Link categories
+        # เชื่อมโยงสถานที่กับหมวดหมู่ที่เลือก
         if attraction.category_ids:
             category_query = "INSERT INTO attraction_category (attraction_id, category_id) VALUES (%s, %s)"
             for category_id in attraction.category_ids:
@@ -97,25 +100,27 @@ async def create_attraction(attraction: AttractionCreate):
 
 @router.get("/{id}", response_model=dict)
 async def get_attraction(id: int):
-    """Get a single attraction with its categories"""
+    """ดึงข้อมูลสถานที่เดียวพร้อมหมวดหมู่ตาม ID"""
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
         
-        # Get attraction
+        # ดึงข้อมูลสถานที่ตาม ID
         cursor.execute("SELECT * FROM attraction WHERE attraction_id = %s", (id,))
         attraction = cursor.fetchone()
         
+        # ถ้าไม่พบสถานที่ ส่ง 404
         if not attraction:
             raise HTTPException(status_code=404, detail="Attraction not found")
         
-        # Get categories
+        # ดึงรายการหมวดหมู่ของสถานที่นี้
         cursor.execute(
             "SELECT category_id FROM attraction_category WHERE attraction_id = %s",
             (id,)
         )
         categories = [{"category_id": row["category_id"]} for row in cursor.fetchall()]
         
+        # แนบหมวดหมู่เข้ากับข้อมูลสถานที่
         attraction["categories"] = categories
         cursor.close()
         connection.close()
@@ -130,18 +135,19 @@ async def get_attraction(id: int):
 
 @router.put("/{id}")
 async def update_attraction(id: int, attraction: AttractionUpdate):
-    """Update an attraction and its categories"""
+    """อัปเดตข้อมูลสถานที่และหมวดหมู่ตาม ID"""
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
         
+        # ตรวจสอบข้อมูลที่จำเป็น
         if not attraction.attraction_name or not isinstance(attraction.category_ids, list):
             raise HTTPException(status_code=400, detail="Missing required fields")
         
         try:
-            connection.start_transaction()
+            connection.start_transaction()  # เริ่ม transaction
             
-            # Update attraction
+            # อัปเดตข้อมูลสถานที่
             update_query = """
                 UPDATE attraction 
                 SET attraction_name = %s, type_id = %s, district_id = %s, 
@@ -161,10 +167,10 @@ async def update_attraction(id: int, attraction: AttractionUpdate):
                 id
             ))
             
-            # Delete old categories
+            # ลบหมวดหมู่เก่าออกก่อน
             cursor.execute("DELETE FROM attraction_category WHERE attraction_id = %s", (id,))
             
-            # Insert new categories
+            # บันทึกหมวดหมู่ใหม่
             if attraction.category_ids:
                 for category_id in attraction.category_ids:
                     cursor.execute(
@@ -179,7 +185,7 @@ async def update_attraction(id: int, attraction: AttractionUpdate):
             return {"message": "Attraction updated successfully"}
         
         except Exception as e:
-            connection.rollback()
+            connection.rollback()  # ยกเลิก transaction ถ้าเกิดข้อผิดพลาด
             raise e
     
     except HTTPException as e:
@@ -190,23 +196,24 @@ async def update_attraction(id: int, attraction: AttractionUpdate):
 
 @router.delete("/{id}")
 async def delete_attraction(id: int):
-    """Delete an attraction and all its related data"""
+    """ลบสถานที่และข้อมูลที่เกี่ยวข้องทั้งหมดตาม ID"""
     connection = None
     cursor = None
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
-        connection.start_transaction()
+        connection.start_transaction()  # เริ่ม transaction
         
-        # Delete categories
+        # ลบข้อมูลหมวดหมู่ของสถานที่ก่อน (ลบ foreign key)
         cursor.execute("DELETE FROM attraction_category WHERE attraction_id = %s", (id,))
         
-        # Delete ratings
+        # ลบคะแนนรีวิวของสถานที่
         cursor.execute("DELETE FROM rating WHERE attraction_id = %s", (id,))
         
-        # Delete attraction
+        # ลบสถานที่
         cursor.execute("DELETE FROM attraction WHERE attraction_id = %s", (id,))
         if cursor.rowcount == 0:
+            # ถ้าไม่มีแถวที่ถูกลบ แสดงว่าไม่พบสถานที่
             raise HTTPException(status_code=404, detail="Attraction not found")
         
         connection.commit()
@@ -215,16 +222,17 @@ async def delete_attraction(id: int):
     
     except HTTPException as e:
         if connection:
-            connection.rollback()
+            connection.rollback()  # ยกเลิก transaction
         raise e
     
     except Exception as e:
         if connection:
-            connection.rollback()
+            connection.rollback()  # ยกเลิก transaction ถ้าเกิดข้อผิดพลาด
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
     
     finally:
+        # ปิด cursor และ connection เสมอ (ไม่ว่าจะสำเร็จหรือไม่)
         if cursor:
             cursor.close()
         if connection:

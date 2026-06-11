@@ -84,7 +84,7 @@ export default function UserMenu({ userName, onViewHistory, onViewProfile, onLog
                 className="w-full px-4 py-3 flex items-center gap-3 text-gray-200 hover:bg-faith-gold/20 hover:text-faith-gold transition-colors text-sm font-semibold border-b border-white/10"
               >
                 <History size={16} />
-                ประวัติการรีวิว
+                ประวัติการให้คะแนน
               </motion.button>
 
               {/* Logout Button */}

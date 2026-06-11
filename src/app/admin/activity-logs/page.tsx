@@ -1,18 +1,19 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Table } from '@/components/Table';
 import { apiGet, apiDelete } from '@/lib/apiClient';
 import { confirmAction, showError, showInfo, showSuccess } from '@/lib/swal';
 
+// โครงสร้างข้อมูลของ activity log
 interface ActivityLog {
-  log_id: number;
-  user_id: number;
-  user_name: string | null;
-  attraction_id: number | null;
-  attraction_name: string | null;
-  action_type: string;
-  created_at: string;
+  log_id: number;                // ID ของ log
+  user_id: number;               // ID ผู้ใช้ที่เกิดกิจกรรม
+  user_name: string | null;      // ชื่อผู้ใช้ (อาจเป็น null ถ้าลบแล้ว)
+  attraction_id: number | null;  // ID สถานที่ที่เกิดกิจกรรม
+  attraction_name: string | null; // ชื่อสถานที่
+  action_type: string;           // ประเภทกิจกรรม เช่น view, rate
+  created_at: string;            // เวลาที่เกิดกิจกรรม
 }
 
 interface Stats {
@@ -35,6 +36,7 @@ export default function ActivityLogsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // ฟังก์ชัน escape ค่าสำหรับ CSV (ครอบด้วย quotes ถ้ามีเครื่องหมายพิเศษ)
   const escapeCsv = (value: string | number | null | undefined) => {
     const text = String(value ?? '');
     if (/[",\n]/.test(text)) {
@@ -43,6 +45,7 @@ export default function ActivityLogsPage() {
     return text;
   };
 
+  // ส่งออกข้อมูล activity log เป็นไฟล์ CSV
   const handleExportCsv = () => {
     if (logs.length === 0) {
       void showInfo('No data', 'No activity logs available to export');
@@ -84,6 +87,7 @@ export default function ActivityLogsPage() {
     URL.revokeObjectURL(url);
   };
 
+  // ดึงข้อมูล log และสถิติจาก API พร้อมกัน
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -100,14 +104,17 @@ export default function ActivityLogsPage() {
     }
   };
 
+  // โหลดข้อมูลครั้งแรกเมื่อ component mount
   useEffect(() => {
     fetchData();
   }, []);
 
+  // อัปเดตคำค้นหา
   const handleSearch = (term: string) => {
     setSearchTerm(term);
   };
 
+  // ยืนยันและลบ activity log
   const handleDelete = async (logId: number, userName: string, attractionName: string) => {
     const subject = attractionName
       ? `${attractionName} - ${userName || 'Unknown'}`

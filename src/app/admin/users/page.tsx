@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Table } from '@/components/Table';
 import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
@@ -28,6 +28,8 @@ export default function UserAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const [searchParams] = useSearchParams();
 
   const closeAddModal = () => {
     setShowForm(false);
@@ -49,6 +51,19 @@ export default function UserAdminPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    const editedId = searchParams.get('editedId');
+    if (editedId) {
+      const id = parseInt(editedId, 10);
+      if (Number.isFinite(id)) {
+        setHighlightedId(id);
+        // Clear the highlight after 3 seconds
+        const timer = setTimeout(() => setHighlightedId(null), 3000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [searchParams]);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -206,6 +221,8 @@ export default function UserAdminPage() {
           <Table
             ref={tableRef}
             data={users}
+            rowIdKey="user_id"
+            highlightedRowId={highlightedId}
             columns={[
               { key: 'user_id', label: 'ID', sortable: true, className: 'w-12' },
               { key: 'user_name', label: 'Username', sortable: true },
