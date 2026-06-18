@@ -1,3 +1,20 @@
+// =============================================================================
+// auth.ts
+// =============================================================================
+// ระบบจัดการ Session ของผู้ใช้ผ่าน localStorage
+// ใช้สำหรับ login/logout และ route protection ใน main.tsx
+//
+// ความสามารถหลัก:
+//   - getAuthSession()   - ดึง session ปัจจุบัน (คืน null ถ้าไม่ได้ login)
+//   - setAuthSession()   - บันทึก session หลัง login สำเร็จ
+//   - clearAuthSession() - ลบ session เมื่อ logout
+//
+// โครงสร้าง AuthSession:
+//   { user_id, user_name, role }   - role: 'user' | 'admin' | 'user_model'
+//
+// Key ใน localStorage: 'auth_session'
+// =============================================================================
+
 // ประเภทข้อมูลของ session ผู้ใช้งานที่ login อยู่
 export type AuthSession = {
   user_id: number;   // ID ผู้ใช้

@@ -1,3 +1,22 @@
+# =============================================================================
+# schemas.py
+# =============================================================================
+# กำหนด Pydantic Schema (Data Models) สำหรับ validate ข้อมูล request/response
+# ของทุก endpoint ในระบบ แบ่งตามกลุ่มดังนี้:
+#
+#   Attraction  → AttractionBase, AttractionCreate, AttractionUpdate,
+#                 AttractionResponse, CategoryItem
+#   User        → UserBase, UserCreate, UserUpdate, UserResponse
+#   Image       → ImageBase, ImageCreate, ImageUpdate, ImageResponse
+#   Rating      → RatingBase, RatingCreate, RatingResponse
+#   Lookup      → CategoryResponse, DistrictResponse, TypeResponse, SectResponse
+#
+# Schema เหล่านี้ทำหน้าที่:
+#   - Validate และ parse ข้อมูลที่รับเข้ามา (request body)
+#   - กำหนดโครงสร้างข้อมูลที่ส่งกลับ (response model)
+#   - สร้าง API documentation อัตโนมัติผ่าน FastAPI / Swagger UI
+# =============================================================================
+
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date
@@ -113,3 +132,11 @@ class SectResponse(BaseModel):
     """Schema สำหรับข้อมูลนิกาย"""
     sect_id: int                            # ID นิกาย
     sect_name: str                          # ชื่อนิกาย
+
+# ===== Schemas สำหรับบันทึกกิจกรรม (Activity Log) =====
+
+class ActivityLogCreate(BaseModel):
+    """Schema สำหรับสร้างบันทึกกิจกรรมใหม่"""
+    user_id: int                            # ID ผู้ใช้
+    attraction_id: int                      # ID สถานที่
+    action_type: str                        # ประเภทกิจกรรม (เช่น 'view_map', 'rate')

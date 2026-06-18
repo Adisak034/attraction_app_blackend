@@ -1,3 +1,21 @@
+# =============================================================================
+# recommendation.py
+# =============================================================================
+# Router สำหรับระบบแนะนำสถานที่ศักดิ์สิทธิ์ (Recommendation System)
+# ใช้อัลกอริทึม Hybrid Collaborative Filtering + Popularity-based Scoring
+#   - CF (70%)         : วิเคราะห์พฤติกรรมผู้ใช้ที่คล้ายกัน (User-based CF)
+#   - Popularity (30%) : คะแนนรวมของสถานที่จากผู้ใช้ทุกคน
+#
+# โมเดลถูกโหลดจากไฟล์ .pkl (pickle) แยกตาม 3 หมวดหมู่:
+#   work (การงาน), finance (โชคลาภ), love (ความรัก)
+#
+# Endpoints:
+#   GET  /api/recommend/{user_id}           → ดึงรายการแนะนำสำหรับผู้ใช้
+#   GET  /api/recommend/models/status       → ตรวจสอบสถานะโมเดลทุกหมวดหมู่
+#   POST /api/recommend/models/reload       → โหลดโมเดลใหม่ทั้งหมด
+#   POST /api/recommend/models/upload       → อัปโหลดไฟล์โมเดล (.pkl)
+# =============================================================================
+
 import math
 import os
 import pickle

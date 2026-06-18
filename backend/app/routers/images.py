@@ -1,3 +1,19 @@
+# =============================================================================
+# images.py
+# =============================================================================
+# Router สำหรับ API จัดการรูปภาพของสถานที่ (Images)
+# Endpoints:
+#   GET    /api/image              → ดึงรูปภาพทั้งหมด (กรองตาม attraction_id ได้)
+#   POST   /api/image              → บันทึก path รูปภาพลงฐานข้อมูล
+#   GET    /api/image/{id}         → ดึงรูปภาพตาม attraction_id
+#   PUT    /api/image/{id}         → อัปเดต path รูปภาพตาม attraction_id
+#   DELETE /api/image/{id}         → ลบรูปภาพทั้งจาก DB และไฟล์จริงบนดิสก์
+#   POST   /api/image/upload       → อัปโหลดไฟล์รูปภาพ (รองรับ jpg, png, gif, webp)
+#
+# มีฟังก์ชัน _normalize_image_path() สำหรับแปลง path รูปภาพทุกรูปแบบ
+# ให้เป็น format มาตรฐาน /uploads/<filename> เสมอ
+# =============================================================================
+
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form
 from app.core.database import get_connection
 from app.schemas.schemas import ImageCreate, ImageUpdate

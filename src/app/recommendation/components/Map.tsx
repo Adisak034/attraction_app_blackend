@@ -1,3 +1,17 @@
+// =============================================================================
+// components/Map.tsx
+// =============================================================================
+// Component สำหรับแสดงแผนที่ Google Maps แบบฝัง (Embedded) พร้อมการปักหมุด
+// 
+// ความสามารถหลัก:
+// - โหลดและแสดง Google Maps ด้วย API Key และ Map ID (เพื่อรองรับ Advanced Markers)
+// - ปักหมุด (Marker) สถานที่สายมูที่ได้รับการแนะนำลงบนแผนที่
+// - ปรับมุมมองแผนที่ (Zoom/Center) ให้เห็นทุกหมุดโดยอัตโนมัติ (Fit Bounds)
+// - คลิกที่หมุดเพื่อเปิด InfoWindow แสดงรายละเอียดสถานที่แบบย่อ
+// - กดปุ่ม "นำทาง" ใน InfoWindow เพื่อพยายามเปิดแอป Google Maps บนมือถือ
+//   หรือเปิดเวอร์ชันเว็บหากไม่มีแอป
+// =============================================================================
+
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, InfoWindow } from '@react-google-maps/api';
 import { Loader2, Star, Navigation } from 'lucide-react';
@@ -162,6 +176,7 @@ const openGoogleMapsNavigation = (lat: number, lng: number, placeName: string) =
 };
 
 const Map: React.FC<MapProps> = ({ recommendations, className }) => {
+    // ดึงค่า API Key และ Map ID จาก Environment Variables
     const apiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '').trim();
     const mapId = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || '').trim() || 'DEMO_MAP_ID';
 
@@ -184,6 +199,7 @@ const Map: React.FC<MapProps> = ({ recommendations, className }) => {
         };
     }, [mapId]);
 
+    // โหลด Google Maps JavaScript API
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: apiKey,
@@ -194,38 +210,42 @@ const Map: React.FC<MapProps> = ({ recommendations, className }) => {
     const [selectedPlace, setSelectedPlace] = useState<Recommendation | null>(null);
     const [brokenImageIds, setBrokenImageIds] = useState<Set<string>>(new Set());
 
-    const markerPoints = useMemo(() => recommendations
-        .map((place) => {
-            const lat = toNumber(place.lat);
-            const lng = toNumber(place.lng);
-            if (lat === null || lng === null || !isValidLatLng(lat, lng)) {
-                return null;
-            }
-            return {
-                ...place,
-                lat,
-                lng,
-            };
-        })
-        .filter((item): item is Recommendation => item !== null), [recommendations]);
+    // กรองและแปลงข้อมูลสถานที่เพื่อเตรียมสร้างหมุด (Markers)
+    const markerPoints = useMemo(() => {
+        return recommendations
+            .map((place) => {
+                const lat = toNumber(place.lat);
+                const lng = toNumber(place.lng);
+                if (lat === null || lng === null || !isValidLatLng(lat, lng)) {
+                    return null;
+                }
+                return {
+                    ...place,
+                    lat,
+                    lng,
+                };
+            })
+            .filter((item): item is Recommendation => item !== null);
+    }, [recommendations]);
 
-    const onLoad = useCallback((map: google.maps.Map) => {
+    // เมื่อแผนที่โหลดเสร็จ ให้ปรับมุมมอง (Fit Bounds) ให้เห็นทุกหมุดพร้อมกัน
+    const onLoad = useCallback((mapInstance: google.maps.Map) => {
         const bounds = new window.google.maps.LatLngBounds();
         if (markerPoints.length > 0) {
             markerPoints.forEach(place => {
                 bounds.extend({ lat: place.lat, lng: place.lng });
             });
             if (markerPoints.length === 1) {
-                map.setCenter({ lat: markerPoints[0].lat, lng: markerPoints[0].lng });
-                map.setZoom(15);
+                mapInstance.setCenter({ lat: markerPoints[0].lat, lng: markerPoints[0].lng });
+                mapInstance.setZoom(15);
             } else {
-                map.fitBounds(bounds);
+                mapInstance.fitBounds(bounds);
             }
         } else {
-            map.setCenter(center);
-            map.setZoom(10);
+            mapInstance.setCenter(center);
+            mapInstance.setZoom(10);
         }
-        setMap(map);
+        setMap(mapInstance);
     }, [markerPoints]);
 
     const onUnmount = useCallback(() => {
@@ -263,44 +283,42 @@ const Map: React.FC<MapProps> = ({ recommendations, className }) => {
         };
     }, [isLoaded, map, markerPoints]);
 
-    if (loadError) {
+    // แสดงหน้าโหลด หากไม่มี API Key หรือกำลังโหลดสคริปต์
+    if (!apiKey) {
         return (
-            <div className={`w-full h-[500px] flex items-center justify-center bg-black/40 rounded-[1.5rem] border border-red-400/40 p-6 text-center ${className}`}>
-                <p className="text-sm text-red-200 font-semibold">
-                    โหลด Google Maps ไม่สำเร็จ กรุณาตรวจสอบ API key, API restrictions และเปิดใช้ Maps JavaScript API
-                </p>
+            <div className={`w-full h-full flex items-center justify-center bg-[#1A0404] rounded-2xl border border-white/10 ${className}`}>
+                <div className="text-center text-red-400 p-4">
+                    <p className="font-bold mb-1">Missing Google Maps API Key</p>
+                    <p className="text-sm">Please set VITE_GOOGLE_MAPS_API_KEY in .env file</p>
+                </div>
             </div>
         );
     }
 
+    if (loadError) {
+        return <div className={`flex items-center justify-center bg-[#1A0404] rounded-2xl ${className || ''}`}>Error loading maps</div>;
+    }
+
     if (!isLoaded) {
         return (
-            <div className={`w-full h-[500px] flex items-center justify-center bg-black/40 rounded-[1.5rem] border border-white/10 ${className}`}>
-                <Loader2 className="animate-spin text-faith-gold" size={48} />
+            <div className={`flex flex-col items-center justify-center bg-[#1A0404] rounded-2xl border border-white/10 ${className || ''}`}>
+                <Loader2 className="w-8 h-8 text-faith-gold animate-spin mb-4" />
+                <p className="text-sm text-gray-400 font-medium">กำลังโหลดแผนที่...</p>
             </div>
         );
     }
 
     return (
-        <div className={`relative w-full ${className || "h-[500px]"}`}>
-            {!apiKey && (
-                <div className="absolute top-0 left-0 w-full z-50 bg-red-900/80 text-white p-2 text-center text-xs font-bold rounded-t-[1.5rem]">
-                    คำเตือน: ไม่พบ VITE_GOOGLE_MAPS_API_KEY ในไฟล์ .env
-                </div>
-            )}
-            {apiKey && recommendations.length > 0 && markerPoints.length === 0 && (
-                <div className="absolute top-0 left-0 w-full z-50 bg-amber-900/80 text-white p-2 text-center text-xs font-bold rounded-t-[1.5rem]">
-                    ไม่พบพิกัดที่ถูกต้องสำหรับปักหมุดจากข้อมูลที่ได้รับ
-                </div>
-            )}
+        <div className={`w-full h-full rounded-2xl overflow-hidden ${className || ''}`}>
             <GoogleMap
-                mapContainerStyle={{ ...defaultContainerStyle, height: '100%' }}
+                mapContainerStyle={{ width: '100%', height: '100%' }}
                 center={center}
                 zoom={10}
                 onLoad={onLoad}
                 onUnmount={onUnmount}
                 options={mapOptions}
             >
+                {/* หน้าต่างป๊อปอัป (InfoWindow) เมื่อคลิกที่หมุด */}
                 {selectedPlace && (
                     <InfoWindow
                         position={{ lat: selectedPlace.lat, lng: selectedPlace.lng }}

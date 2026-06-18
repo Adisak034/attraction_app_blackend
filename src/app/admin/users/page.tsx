@@ -1,3 +1,23 @@
+// =============================================================================
+// app/admin/users/page.tsx
+// =============================================================================
+// หน้าจัดการผู้ใช้ (/admin/users)
+// แสดงและจัดการบัญชีผู้ใช้ทั้งหมดในระบบ
+//
+// ความสามารถหลัก:
+//   - แสดงตารางผู้ใช้ทั้งหมด (ID, ชื่อ, Role, Password แบบปิด)
+//   - เพิ่มผู้ใช้ใหม่ผ่าน Modal Form (username, password, role)
+//   - ลบผู้ใช้ (พร้อม confirm dialog)
+//   - คลิก Edit → ไปหน้า /admin/users/edit/:id
+//   - highlight แถวที่เพิ่ง edit ด้วยสีเหลือง 3 วินาที
+//   - Role ที่รองรับ: user, admin, user_model
+//
+// API ที่เรียก:
+//   GET    /api/users      - ดึงผู้ใช้ทั้งหมด
+//   POST   /api/users      - เพิ่มผู้ใช้ใหม่
+//   DELETE /api/users/:id  - ลบผู้ใช้
+// =============================================================================
+
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';

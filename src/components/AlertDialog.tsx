@@ -1,3 +1,28 @@
+// =============================================================================
+// AlertDialog.tsx
+// =============================================================================
+// ระบบ Alert Dialog ส่วนกลางของแอป ใช้ Framer Motion สำหรับ animation
+// ออกแบบมาให้ใช้แทน native browser alert/confirm
+//
+// ประกอบด้วย:
+//   - AlertDialog      : modal component แสดง icon, ชื่อ, ข้อความ, ปุ่มกระทำ
+//   - AlertProvider    : Context Provider ครอบ component tree ทั้งหมด
+//   - useAlert()       : Hook สำหรับเรียก showAlert จากภายใน component
+//
+// ประเภท Alert (AlertType):
+//   success  - สีเขียว (✓)  ปิดอัตโนมัติ 3 วินาที
+//   error    - สีแดง  (✕)  ปิดอัตโนมัติ 3 วินาที
+//   info     - สีน้ำเงิน (ⓘ)  ปิดอัตโนมัติ 3 วินาที
+//   warning  - สีส้ม   (!) มีปุ่ม ยืนยัน + ยกเลิก (confirm dialog)
+//   confirm  - สีส้ม   (!) มีปุ่ม ยืนยัน + ยกเลิก (confirm dialog)
+//
+// วิธีใช้:
+//   const { showAlert } = useAlert();
+//   const confirmed = await showAlert({ type: 'warning', title: '...', text: '...' });
+//
+// หมายเหตุ: สำหรับใช้นอก component ให้ใช้ swal.ts แทน
+// =============================================================================
+
 import React, { createContext, useContext, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 

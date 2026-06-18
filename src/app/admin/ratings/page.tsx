@@ -1,4 +1,21 @@
-﻿import { useState, useEffect, useRef } from 'react';
+// =============================================================================
+// app/admin/ratings/page.tsx
+// =============================================================================
+// หน้าจัดการคะแนนรีวิว (/admin/ratings)
+// แสดง rating ทั้งหมดที่ผู้ใช้ให้กับสถานที่
+//
+// ความสามารถหลัก:
+//   - แสดงตาราง rating ทั้งหมด: สถานที่, ผู้ใช้, Work/Finance/Love (คะแนน/5)
+//   - ลบ rating รายการได้ (พร้อม confirm dialog)
+//   - Export ข้อมูลทั้งหมดเป็นไฟล์ CSV
+//   - Search, sort, pagination ผ่าน Table component
+//
+// API ที่เรียก:
+//   GET    /api/rating      - ดึง rating ทั้งหมด
+//   DELETE /api/rating/:id  - ลบ rating
+// =============================================================================
+
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Table } from '@/components/Table';

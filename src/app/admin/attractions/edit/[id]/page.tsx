@@ -1,3 +1,23 @@
+// =============================================================================
+// app/admin/attractions/edit/[id]/page.tsx
+// =============================================================================
+// หน้าแก้ไขสถานที่ (/admin/attractions/edit/:id)
+// โหลดข้อมูลสถานที่ตาม ID แล้วแสดง Form ให้แก้ไข
+//
+// ความสามารถหลัก:
+//   - โหลดข้อมูลสถานที่ + dropdown (type, district, sect, category) พร้อมกัน
+//   - ฟอร์มแก้ไขข้อมูลสถานที่ทั้งหมด รวมถึงหมวดหมู่ (checkbox)
+//   - บันทึกด้วย PUT API แล้ว redirect กลับพร้อม highlight แถวที่แก้ไข
+//
+// API ที่เรียก:
+//   GET /api/attraction/:id  - โหลดข้อมูลสถานที่เดิม
+//   GET /api/category        - dropdown หมวดหมู่
+//   GET /api/type            - dropdown ประเภท
+//   GET /api/district        - dropdown อำเภอ
+//   GET /api/sect            - dropdown นิกาย
+//   PUT /api/attraction/:id  - บันทึกการแก้ไข
+// =============================================================================
+
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPut } from '@/lib/apiClient';

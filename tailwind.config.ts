@@ -14,7 +14,11 @@ export default {
         'faith-accent': '#8B0000',
       },
       fontFamily: {
-        outfit: ['IBM Plex Sans Thai Looped', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
+        // Font หลักสำหรับภาษาไทย — ดูหรู เส้นบาง เหมาะกับธีม spiritual
+        outfit: ['Prompt', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
+        sans: ['Prompt', 'Noto Sans Thai', 'system-ui', 'sans-serif'],
+        // Font สำหรับ heading ภาษาอังกฤษ — ดูโบราณ ศักดิ์สิทธิ์
+        cinzel: ['Cinzel', 'serif'],
       },
     },
   },

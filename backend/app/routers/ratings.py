@@ -1,3 +1,16 @@
+# =============================================================================
+# ratings.py
+# =============================================================================
+# Router สำหรับ API จัดการคะแนนรีวิวสถานที่ (Ratings)
+# คะแนนแบ่งเป็น 3 มิติ: การงาน (work), การเงิน/โชคลาภ (finance),
+#                        และความรัก (love) ช่วง 0-5
+# Endpoints:
+#   GET    /api/rating              → ดึงคะแนนรีวิวทั้งหมด พร้อมชื่อผู้ใช้/สถานที่
+#   POST   /api/rating              → เพิ่มคะแนนรีวิวใหม่
+#   GET    /api/rating/user/{id}    → ดึงคะแนนรีวิวทั้งหมดของผู้ใช้คนเดียว
+#   DELETE /api/rating/{id}         → ลบคะแนนรีวิวตาม rating_id
+# =============================================================================
+
 from fastapi import APIRouter, HTTPException
 from app.core.database import get_connection
 from app.schemas.schemas import RatingCreate, RatingResponse
@@ -65,6 +78,13 @@ async def create_rating(rating: RatingCreate):
         
         # ดึง ID ของคะแนนที่เพิ่งสร้าง
         rating_id = cursor.lastrowid
+        
+        # บันทึก Activity Log
+        cursor.execute(
+            "INSERT INTO activity_log (user_id, attraction_id, action_type) VALUES (%s, %s, %s)",
+            (rating.user_id, rating.attraction_id, 'rate')
+        )
+        
         connection.commit()
         cursor.close()
         connection.close()

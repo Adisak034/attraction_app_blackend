@@ -1,3 +1,21 @@
+// =============================================================================
+// swal.ts
+// =============================================================================
+// Utility สำหรับแสดง Alert/Dialog จากนอก React Component
+// เชื่อมกับ AlertProvider ใน AlertDialog.tsx ผ่าน setAlertFunction()
+//
+// ปัญหาที่แก้: React Hook (useAlert) ไม่สามารถเรียกใช้นอก component ได้
+// วิธีแก้: เก็บ reference ของ showAlert ไว้ใน module-level variable
+//
+// ฟังก์ชันที่ใช้ได้:
+//   confirmAction(title, text) - dialog ยืนยัน (ปุ่ม ยืนยัน / ยกเลิก) → คืน boolean
+//   showSuccess(title, text)   - dialog สำเร็จ (ปิดอัตโนมัติ 3 วินาที)
+//   showError(title, text)     - dialog error (ปิดอัตโนมัติ 3 วินาที)
+//   showInfo(title, text)      - dialog ข้อมูลทั่วไป (ปิดอัตโนมัติ 3 วินาที)
+//
+// วิธีใช้: import { confirmAction, showSuccess, showError, showInfo } from '@/lib/swal'
+// =============================================================================
+
 import { useAlert } from '@/components/AlertDialog';
 
 // เก็บ reference ของ showAlert function เพื่อใช้งานนอก React component

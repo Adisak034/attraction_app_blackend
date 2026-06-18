@@ -1,3 +1,23 @@
+// =============================================================================
+// apiClient.ts
+// =============================================================================
+// HTTP Client ส่วนกลางของแอปพลิเคชัน ใช้ axios เป็นพื้นฐาน
+// ทุก component ที่ต้องการเรียก API จะต้องใช้ผ่านไฟล์นี้
+//
+// ความสามารถหลัก:
+//   - กำหนด base URL จาก VITE_API_URL (.env) โดยอัตโนมัติ
+//   - Response interceptor แปลง error จาก server เป็นข้อความที่อ่านได้
+//   - resolveImageUrl() - แปลง relative path รูปภาพเป็น absolute URL
+//   - apiGet()    - HTTP GET
+//   - apiPost()   - HTTP POST (JSON)
+//   - apiPut()    - HTTP PUT (JSON)
+//   - apiDelete() - HTTP DELETE
+//   - apiUploadFile() - POST multipart/form-data (อัปโหลดไฟล์)
+//
+// Environment Variables ที่ต้องการ:
+//   VITE_API_URL  - URL ของ backend เช่น http://localhost:8000
+// =============================================================================
+
 import axios, { AxiosInstance } from 'axios';
 
 // กำหนด URL ฐานสำหรับเรียก API — ตั้งค่าใน VITE_API_URL ของไฟล์ .env

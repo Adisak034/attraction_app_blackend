@@ -1,3 +1,26 @@
+// =============================================================================
+// Table.tsx
+// =============================================================================
+// Reusable Data Table Component ใช้ในทุกหน้า admin
+// รองรับ pagination, sorting, search, และ custom cell rendering
+//
+// ความสามารถหลัก:
+//   - Pagination       : แบ่งหน้าข้อมูลพร้อมเลือกจำนวนแถวต่อหน้าได้
+//   - Sorting          : คลิก column header เพื่อ sort asc/desc (รองรับภาษาไทย)
+//   - Search           : ค้นหาข้ามทุก column พร้อมกัน
+//   - Custom Render    : แต่ละ column ใส่ render function เองได้
+//   - Row Highlight    : highlight แถวที่เพิ่ง add/edit ด้วยสีเหลือง 3 วินาที
+//   - Auto-navigate    : เมื่อ highlight แถว จะกระโดดไปหน้าที่มีแถวนั้นอัตโนมัติ
+//
+// Props สำคัญ:
+//   columns[]        - นิยาม column (key, label, sortable, render, className)
+//   data[]           - ข้อมูลทั้งหมด
+//   pageSize         - จำนวนแถวต่อหน้าเริ่มต้น (default: 10)
+//   searchable       - แสดงช่องค้นหา
+//   highlightedRowId - ID ของแถวที่ต้องการ highlight
+//   renderRow        - custom render function สำหรับทั้งแถว
+// =============================================================================
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 

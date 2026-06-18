@@ -1,3 +1,15 @@
+// =============================================================================
+// components/RatingHistory.tsx
+// =============================================================================
+// หน้าต่าง Modal สำหรับแสดงประวัติการให้คะแนน (Rating History) ของผู้ใช้
+// 
+// ความสามารถหลัก:
+// - ดึงประวัติการรีวิวทั้งหมดของผู้ใช้จาก API (/api/rating/user/:id)
+// - แสดงรายการสถานที่ที่เคยไปพร้อมกับคะแนนที่เคยให้ในแต่ละด้าน (ความรัก, การงาน, การเงิน)
+// - เรียงลำดับจากรีวิวล่าสุด พร้อมแสดงวันที่รีวิว
+// - จัดรูปแบบหน้าตาให้อ่านง่ายและมีดีไซน์กะทัดรัด (max-w-lg)
+// =============================================================================
+
 import { useState, useEffect } from 'react';
 import { Loader2, X, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -87,19 +99,30 @@ export default function RatingHistory({ userId, userName, onBack }: RatingHistor
         className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
       >
         <motion.div
-          className="bg-[#1A0404] border border-faith-gold/20 rounded-2xl shadow-2xl w-full max-w-2xl pointer-events-auto max-h-[90vh] overflow-hidden flex flex-col"
+          className="w-full max-w-lg bg-[#1A0404]/95 border border-faith-gold/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] pointer-events-auto backdrop-blur-md relative"
         >
+          {/* Decorative Elements */}
+          <div className="absolute top-[-50%] left-[-10%] w-[60%] h-[60%] bg-amber-600/10 blur-[100px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-[-50%] right-[-10%] w-[60%] h-[60%] bg-red-800/10 blur-[100px] rounded-full pointer-events-none" />
+
           {/* Header */}
-          <div className="sticky top-0 z-50 bg-[#1A0404] border-b border-faith-gold/10 px-6 py-4 flex items-center justify-between">
+          <div className="p-4 sm:p-5 flex items-start justify-between border-b border-white/10 relative z-10 shrink-0 bg-gradient-to-b from-[#2D0A0A] to-transparent">
             <div>
-              <h2 className="text-xl font-black text-faith-gold">ประวัติการให้คะแนน</h2>
-              <p className="text-gray-400 text-xs mt-1">ผู้ใช้: {userName}</p>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 bg-faith-gold rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 text-[#1A0404]">
+                  <Star size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black gold-gradient-text text-faith-gold">ประวัติการให้คะแนน</h2>
+                  <p className="text-xs text-gray-400 font-medium">ของ {userName}</p>
+                </div>
+              </div>
             </div>
             <button
               onClick={onBack}
-              className="p-1 hover:bg-faith-gold/10 rounded-lg transition-colors text-faith-gold flex-shrink-0"
+              className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white relative z-20"
             >
-              <X size={20} />
+              <X size={16} />
             </button>
           </div>
 
@@ -115,18 +138,18 @@ export default function RatingHistory({ userId, userName, onBack }: RatingHistor
           `}</style>
 
           {/* Search Bar */}
-          <div className="sticky top-16 z-40 bg-[#1A0404] border-b border-faith-gold/10 px-6 py-3">
+          <div className="px-4 sm:px-5 py-3 shrink-0 relative z-10">
             <input
               type="text"
               placeholder="ค้นหาสถานที่..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:border-faith-gold focus:outline-none text-gray-100 placeholder-gray-500 transition-colors"
+              className="w-full px-4 py-2.5 bg-[#2D0A0A] border border-white/15 rounded-lg text-sm focus:border-faith-gold focus:outline-none text-white placeholder-white/50 transition-colors"
             />
           </div>
 
           {/* Content */}
-          <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1 scrollbar-hide">
+          <div className="px-4 sm:px-5 pb-4 flex-1 overflow-y-auto relative z-10 custom-scrollbar">
             {loading && (
               <div className="flex flex-col items-center justify-center py-12 sm:py-16">
                 <Loader2 className="animate-spin text-faith-gold mb-3 sm:mb-4" size={28} />
@@ -182,30 +205,30 @@ export default function RatingHistory({ userId, userName, onBack }: RatingHistor
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 hover:border-faith-gold/30 transition-all hover:bg-gray-900/80"
+                    className="bg-[#2D0A0A] border border-white/15 rounded-xl p-3 sm:p-4 hover:border-faith-gold/50 transition-all shadow-md"
                   >
                     {/* Attraction Name */}
-                    <h3 className="text-sm sm:text-base font-semibold text-faith-gold mb-3 truncate">
+                    <h3 className="text-sm font-semibold text-faith-gold mb-2 truncate">
                       {rating.attraction_name}
                     </h3>
 
                     {/* Ratings Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
                       {/* Work Rating */}
-                      <div className="bg-gray-950/50 rounded p-2.5 sm:p-3">
-                        <p className="text-xs text-gray-500 mb-1.5">การงาน</p>
+                      <div className="bg-black/20 rounded-lg p-2 border border-white/5">
+                        <p className="text-[10px] sm:text-xs text-gray-400 mb-1">การงาน</p>
                         {renderRating(rating.rating_work)}
                       </div>
 
                       {/* Finance Rating */}
-                      <div className="bg-gray-950/50 rounded p-2.5 sm:p-3">
-                        <p className="text-xs text-gray-500 mb-1.5">โชคลาภการเงิน</p>
+                      <div className="bg-black/20 rounded-lg p-2 border border-white/5">
+                        <p className="text-[10px] sm:text-xs text-gray-400 mb-1">โชคลาภการเงิน</p>
                         {renderRating(rating.rating_finance)}
                       </div>
 
                       {/* Love Rating */}
-                      <div className="bg-gray-950/50 rounded p-2.5 sm:p-3">
-                        <p className="text-xs text-gray-500 mb-1.5">ความรัก</p>
+                      <div className="bg-black/20 rounded-lg p-2 border border-white/5">
+                        <p className="text-[10px] sm:text-xs text-gray-400 mb-1">ความรัก</p>
                         {renderRating(rating.rating_love)}
                       </div>
                     </div>

@@ -1,15 +1,31 @@
+// =============================================================================
+// components/UserMenu.tsx
+// =============================================================================
+// เมนูผู้ใช้งาน (Dropdown Menu) ที่แสดงอยู่มุมขวาบนของหน้าเว็บ
+// 
+// ความสามารถหลัก:
+// - แสดงปุ่ม Avatar และชื่อผู้ใช้งานที่ล็อกอินอยู่
+// - กดคลิกเพื่อเปิด Dropdown Menu เลื่อนลงมา
+// - มีตัวเลือก: ไปหน้าแอดมิน(เฉพาะ Admin), โปรไฟล์, ประวัติให้คะแนน, ประวัติการเดินทาง
+// - มีปุ่ม "ออกจากระบบ" (Logout)
+// - ดีไซน์การเปิด/ปิดเมนูด้วย Framer Motion แบบ Classic Dropdown
+// =============================================================================
+
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, History, LogOut, User } from 'lucide-react';
+import { ChevronDown, History, LogOut, User, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface UserMenuProps {
   userName: string;
+  isAdmin?: boolean;
+  onNavigateAdmin?: () => void;
   onViewHistory: () => void;
+  onViewNavigationHistory: () => void;
   onViewProfile: () => void;
   onLogout: () => void;
 }
 
-export default function UserMenu({ userName, onViewHistory, onViewProfile, onLogout }: UserMenuProps) {
+export default function UserMenu({ userName, isAdmin, onNavigateAdmin, onViewHistory, onViewNavigationHistory, onViewProfile, onLogout }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +44,11 @@ export default function UserMenu({ userName, onViewHistory, onViewProfile, onLog
   const handleViewHistory = () => {
     setIsOpen(false);
     onViewHistory();
+  };
+
+  const handleViewNavigationHistory = () => {
+    setIsOpen(false);
+    onViewNavigationHistory();
   };
 
   const handleViewProfile = () => {
@@ -67,6 +88,18 @@ export default function UserMenu({ userName, onViewHistory, onViewProfile, onLog
             className="absolute right-0 mt-2 w-48 bg-[#1A0404]/95 border border-faith-gold/50 rounded-xl shadow-2xl backdrop-blur-md overflow-hidden z-[100]"
           >
             <div className="py-2">
+              {/* Admin Panel Button (only if admin) */}
+              {isAdmin && (
+                <motion.button
+                  onClick={() => { setIsOpen(false); onNavigateAdmin?.(); }}
+                  whileHover={{ x: 4 }}
+                  className="w-full px-4 py-3 flex items-center gap-3 text-faith-gold hover:bg-faith-gold/20 transition-colors text-sm font-semibold border-b border-white/10"
+                >
+                  <User size={16} />
+                  จัดการระบบ (Admin)
+                </motion.button>
+              )}
+
               {/* View Profile Button */}
               <motion.button
                 onClick={handleViewProfile}
@@ -85,6 +118,16 @@ export default function UserMenu({ userName, onViewHistory, onViewProfile, onLog
               >
                 <History size={16} />
                 ประวัติการให้คะแนน
+              </motion.button>
+
+              {/* View Navigation History Button */}
+              <motion.button
+                onClick={handleViewNavigationHistory}
+                whileHover={{ x: 4 }}
+                className="w-full px-4 py-3 flex items-center gap-3 text-gray-200 hover:bg-faith-gold/20 hover:text-faith-gold transition-colors text-sm font-semibold border-b border-white/10"
+              >
+                <Navigation size={16} />
+                ประวัติการนำทาง
               </motion.button>
 
               {/* Logout Button */}

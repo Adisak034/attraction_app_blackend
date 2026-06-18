@@ -1,3 +1,24 @@
+// =============================================================================
+// main.tsx
+// =============================================================================
+// จุดเริ่มต้นหลัก (Entry Point) ของแอปพลิเคชัน React
+// รับผิดชอบการตั้งค่า Router, Provider และ Authentication Guard
+//
+// โครงสร้างหลัก:
+//   - BrowserRouter     : ระบบ routing ของแอป
+//   - AlertProvider     : Context สำหรับแสดง dialog/alert ทั่วทั้งแอป
+//   - AppInitializer    : เชื่อม showAlert function ให้ใช้ได้นอก component
+//   - ProtectedAdminRoute : Guard ป้องกันหน้า admin (ต้อง login + role=admin)
+//   - AdminLayout       : Layout ครอบ admin section (มี navbar + logout)
+//
+// Routes หลัก:
+//   /                   → RecommendationPage (หน้าผู้ใช้หลัก)
+//   /recommend          → RecommendationPage
+//   /admin/*            → AdminLayout (ต้องผ่าน ProtectedAdminRoute)
+//   /admin/admin-permission → PermissionDeniedPage (หน้าแจ้งไม่มีสิทธิ์)
+//   /login, /admin/login → redirect ไปหน้าหลัก
+// =============================================================================
+
 import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
@@ -15,7 +36,7 @@ import ActivityLogsPage from './app/admin/activity-logs/page'
 import AdminPage from './app/admin/page'
 import RecommendationModelsPage from './app/admin/recommendation-models/page'
 // import หน้าผู้ใช้และ utilities
-import RecommendationPage from './app/recommendation/page'
+import RecommendationPage from './app/recommendation/App'
 import PermissionDeniedPage from './app/admin/admin-permission/page'
 import { clearAuthSession, getAuthSession } from './lib/auth'
 import { AlertProvider, useAlert } from './components/AlertDialog'

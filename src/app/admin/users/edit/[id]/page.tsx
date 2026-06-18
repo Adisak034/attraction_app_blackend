@@ -1,3 +1,18 @@
+// =============================================================================
+// app/admin/users/edit/[id]/page.tsx
+// =============================================================================
+// หน้าแก้ไขข้อมูลผู้ใช้ (/admin/users/edit/:id)
+// โหลดข้อมูลผู้ใช้ตาม ID แล้วแสดง Form ให้แก้ไข
+//
+// ความสามารถหลัก:
+//   - แก้ไข username, password, และ role ของผู้ใช้
+//   - บันทึกด้วย PUT API แล้ว redirect กลับพร้อม highlight
+//
+// API ที่เรียก:
+//   GET /api/users/:id  - โหลดข้อมูลผู้ใช้เดิม
+//   PUT /api/users/:id  - บันทึกการแก้ไข
+// =============================================================================
+
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPut } from '@/lib/apiClient';

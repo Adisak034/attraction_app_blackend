@@ -1,3 +1,19 @@
+# =============================================================================
+# users.py
+# =============================================================================
+# Router สำหรับ API จัดการข้อมูลผู้ใช้งาน (Users) และการยืนยันตัวตน (Auth)
+# Endpoints:
+#   GET    /api/users                        → ดึงผู้ใช้ทั้งหมด
+#   POST   /api/users                        → สร้างผู้ใช้ใหม่
+#   GET    /api/users/{id}                   → ดึงผู้ใช้เดียวตาม ID
+#   PUT    /api/users/{id}                   → อัปเดตข้อมูลผู้ใช้ตาม ID
+#   DELETE /api/users/{id}                   → ลบผู้ใช้และข้อมูลที่เกี่ยวข้อง
+#   POST   /api/users/login                  → เข้าสู่ระบบ (username + password)
+#   GET    /api/users/check-username/{name}  → ตรวจสอบว่าชื่อผู้ใช้ซ้ำหรือไม่
+#
+# หมายเหตุ: รหัสผ่านถูกเก็บเป็น plain text (ยังไม่ได้ hash)
+# =============================================================================
+
 from fastapi import APIRouter, HTTPException
 from app.core.database import get_connection
 from app.schemas.schemas import UserCreate, UserUpdate, UserResponse

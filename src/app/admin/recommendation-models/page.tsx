@@ -1,3 +1,20 @@
+// =============================================================================
+// app/admin/recommendation-models/page.tsx
+// =============================================================================
+// หน้าจัดการโมเดล AI สำหรับระบบแนะนำ (/admin/recommendation-models)
+// ใช้อัปโหลดและโหลดใหม่ไฟล์โมเดล .pkl สำหรับ 3 หมวดหมู่
+//
+// ความสามารถหลัก:
+//   - แสดงสถานะโมเดล 3 หมวดหมู่ (work/finance/love): มีไฟล์ หรือ โหลดในหน่วยความจำ
+//   - อัปโหลดไฟล์ .pkl ใหม่แยกตามหมวดหมู่
+//   - Reload Models: โหลดไฟล์ .pkl ที่มีอยู่ใหม่ทั้งหมดเข้าหน่วยความจำ
+//
+// API ที่เรียก:
+//   GET  /api/recommend/models/status  - ตรวจสอบสถานะโมเดล
+//   POST /api/recommend/models/reload  - รีโหลดโมเดลทั้งหมด
+//   POST /api/recommend/models/upload  - อัปโหลดไฟล์โมเดล (.pkl)
+// =============================================================================
+
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Upload } from 'lucide-react';

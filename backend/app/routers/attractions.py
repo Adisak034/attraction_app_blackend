@@ -1,3 +1,15 @@
+# =============================================================================
+# attractions.py
+# =============================================================================
+# Router สำหรับ API จัดการข้อมูลสถานที่ศักดิ์สิทธิ์/วัด (Attractions)
+# Endpoints:
+#   GET    /api/attraction         → ดึงสถานที่ทั้งหมด พร้อมหมวดหมู่
+#   POST   /api/attraction         → สร้างสถานที่ใหม่ พร้อมเชื่อมหมวดหมู่
+#   GET    /api/attraction/{id}    → ดึงสถานที่เดียวตาม ID
+#   PUT    /api/attraction/{id}    → อัปเดตข้อมูลสถานที่ตาม ID
+#   DELETE /api/attraction/{id}    → ลบสถานที่และข้อมูลที่เกี่ยวข้องทั้งหมด
+# =============================================================================
+
 from fastapi import APIRouter, HTTPException
 from app.core.database import get_connection
 from app.schemas.schemas import (

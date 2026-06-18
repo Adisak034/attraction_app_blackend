@@ -1,3 +1,15 @@
+# =============================================================================
+# database.py
+# =============================================================================
+# จัดการการเชื่อมต่อฐานข้อมูล MySQL สำหรับทั้งระบบ
+# หน้าที่หลัก:
+#   - โหลดค่า config จาก environment variables (DB_HOST, DB_USER, DB_PASSWORD,
+#     DB_NAME, DB_PORT)
+#   - สร้าง Connection Pool (MySQLConnectionPool) เพื่อจัดการ connection
+#     อย่างมีประสิทธิภาพ และลดการ overhead จากการเปิด/ปิด connection ซ้ำ
+#   - เปิดเผยฟังก์ชัน get_connection() สำหรับให้ router ทุกตัวเรียกใช้
+# =============================================================================
+
 # นำเข้าไลบรารี่สำหรับเชื่อมต่อ MySQL
 import mysql.connector
 from mysql.connector import pooling

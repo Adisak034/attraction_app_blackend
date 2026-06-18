@@ -1,3 +1,25 @@
+// =============================================================================
+// app/admin/images/edit/[id]/page.tsx
+// =============================================================================
+// หน้าแก้ไขรูปภาพของสถานที่ (/admin/images/edit/:id)
+// รองรับทั้งการใส่ URL รูปภาพและการอัปโหลดไฟล์
+//
+// ความสามารถหลัก:
+//   - โหลดข้อมูลรูปภาพปัจจุบัน + รายชื่อสถานที่ทั้งหมด
+//   - อัปโหลดไฟล์ภาพใหม่ผ่าน multipart/form-data → preview ก่อนบันทึก
+//   - หรือใส่ URL รูปภาพโดยตรง (http/https หรือ path)
+//   - Preview รูปภาพ current/new พร้อม fallback SVG เมื่อโหลดไม่ได้
+//   - ลบรูปภาพ (พร้อม confirm dialog)
+//   - บันทึกด้วย PUT API แล้ว redirect กลับพร้อม highlight
+//
+// API ที่เรียก:
+//   GET    /api/image/:id           - โหลดข้อมูลรูปภาพเดิม
+//   GET    /api/attraction          - รายชื่อสถานที่ (dropdown)
+//   POST   /api/image/upload        - อัปโหลดไฟล์
+//   PUT    /api/image/:id           - บันทึกการแก้ไข URL
+//   DELETE /api/image/:id           - ลบรูปภาพ
+// =============================================================================
+
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPut, apiDelete, apiUploadFile } from '@/lib/apiClient';

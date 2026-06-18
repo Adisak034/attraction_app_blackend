@@ -1,3 +1,22 @@
+// =============================================================================
+// app/admin/images/page.tsx
+// =============================================================================
+// หน้าจัดการรูปภาพสถานที่ (/admin/images)
+// แสดงรายการสถานที่ทั้งหมด พร้อมรูปภาพปัจจุบันของแต่ละสถานที่
+//
+// ความสามารถหลัก:
+//   - รวมข้อมูลจาก /api/image และ /api/attraction เพื่อแสดงรายการสมบูรณ์
+//   - Preview รูปภาพขนาดเล็กในตาราง (100x80px)
+//   - แสดง URL รูปภาพปัจจุบัน (truncated)
+//   - คลิก Edit → ไปหน้า /admin/images/edit/:id
+//   - ใช้ cache buster (?v=timestamp) เพื่อให้รูปอัปเดตหลัง edit
+//   - highlight แถวที่เพิ่ง edit ด้วยสีเหลือง 3 วินาที
+//
+// API ที่เรียก:
+//   GET /api/image      - ดึง image URL ของสถานที่ทั้งหมด
+//   GET /api/attraction - ดึงรายชื่อสถานที่ทั้งหมด
+// =============================================================================
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';

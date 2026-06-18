@@ -1,3 +1,18 @@
+# =============================================================================
+# main.py
+# =============================================================================
+# จุดเริ่มต้นของแอปพลิเคชัน FastAPI (Entry Point)
+# หน้าที่หลัก:
+#   - สร้างและกำหนดค่า FastAPI application instance
+#   - ตั้งค่า CORS Middleware (รองรับทั้ง development และ production)
+#   - Mount โฟลเดอร์ static files สำหรับรูปภาพที่อัปโหลด (/uploads)
+#   - ลงทะเบียน router ทั้งหมด (attractions, users, images, ratings,
+#     lookup_tables, activity_log, recommendation)
+#   - กำหนด health check endpoint (/health) และ root endpoint (/)
+#
+# รันด้วยคำสั่ง: uvicorn app.main:app --reload
+# =============================================================================
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

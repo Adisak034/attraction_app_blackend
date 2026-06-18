@@ -1,3 +1,22 @@
+// =============================================================================
+// app/admin/page.tsx
+// =============================================================================
+// หน้า Dashboard หลักของ Admin (/admin)
+// แสดงสถิติภาพรวมและลิงก์ไปยังหน้าจัดการต่าง ๆ
+//
+// ความสามารถหลัก:
+//   - ดึงข้อมูลสถิติจาก API พร้อมกัน (attractions, users, ratings)
+//   - แสดง Stat Cards: จำนวนสถานที่, ผู้ใช้, รูปภาพ, คะแนนรีวิว
+//   - แสดง Rating Distribution (progress bar) แยก Work/Finance/Love
+//   - แสดง Attractions by Category (bar chart แบบ progress bar)
+//   - Management Sections: ลิงก์การ์ดไปยัง 6 หน้าจัดการ
+//
+// API ที่เรียก:
+//   GET /api/attraction - ดึงสถานที่ทั้งหมด
+//   GET /api/users      - ดึงผู้ใช้ทั้งหมด
+//   GET /api/rating     - ดึง rating ทั้งหมด
+// =============================================================================
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapIcon, Users, ImageIcon, Star, Activity, Brain } from 'lucide-react';

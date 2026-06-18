@@ -1,11 +1,42 @@
+# =============================================================================
+# activity_log.py
+# =============================================================================
+# Router สำหรับ API จัดการบันทึกกิจกรรมของผู้ใช้ (Activity Log)
+# Endpoints:
+#   GET    /api/activity-logs          → ดึง activity log ทั้งหมด (กำหนดจำนวนได้)
+#   GET    /api/activity-logs/stats    → ดึงสถิติภาพรวม เช่น จำนวนกิจกรรม,
+#                                        ผู้ใช้ไม่ซ้ำ, สถานที่ยอดนิยม Top 10
+#   DELETE /api/activity-logs/{log_id} → ลบ activity log ตาม ID
+# =============================================================================
+
 from fastapi import APIRouter, HTTPException
 from app.core.database import get_connection
 from app.schemas.schemas import (
-    AttractionCreate, RatingCreate, UserCreate
+    AttractionCreate, RatingCreate, UserCreate, ActivityLogCreate
 )
 
 # กำหนด router สำหรับจัดการ Activity Log (บันทึกกิจกรรมของผู้ใช้)
 router = APIRouter(prefix="/api", tags=["activity"])
+
+@router.post("/activity-logs", status_code=201)
+async def create_activity_log(log: ActivityLogCreate):
+    """สร้างบันทึกกิจกรรมใหม่"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "INSERT INTO activity_log (user_id, attraction_id, action_type) VALUES (%s, %s, %s)",
+            (log.user_id, log.attraction_id, log.action_type)
+        )
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        
+        return {"message": "Activity log created successfully"}
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Database Error: {err}")
 
 @router.get("/activity-logs")
 async def get_activity_logs(limit: int = 100):
@@ -114,3 +145,35 @@ async def delete_activity_log(log_id: int):
             cursor.close()
         if conn:
             conn.close()
+
+@router.get("/activity-logs/user/{user_id}/navigations")
+async def get_user_navigations(user_id: int):
+    """ดึงประวัติการนำทาง (view_map) ของผู้ใช้ พร้อมเช็คว่าให้คะแนนหรือยัง"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # ดึง attraction ที่ user เคย view_map และเช็คว่าให้คะแนนแล้วหรือยัง
+        query = """
+            SELECT 
+                a.attraction_id,
+                a.attraction_name,
+                MAX(al.created_at) as last_navigated_at,
+                CASE WHEN r.rating_id IS NOT NULL THEN 1 ELSE 0 END as has_rated
+            FROM activity_log al
+            JOIN attraction a ON al.attraction_id = a.attraction_id
+            LEFT JOIN rating r ON r.user_id = al.user_id AND r.attraction_id = al.attraction_id
+            WHERE al.user_id = %s
+              AND al.action_type = 'view_map'
+            GROUP BY a.attraction_id, a.attraction_name, has_rated
+            ORDER BY last_navigated_at DESC
+        """
+        
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        return result
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Database Error: {err}")

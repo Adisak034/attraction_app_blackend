@@ -1,3 +1,26 @@
+// =============================================================================
+// app/admin/attractions/page.tsx
+// =============================================================================
+// หน้าจัดการสถานที่ทั้งหมด (/admin/attractions)
+// ใช้สำหรับดู, เพิ่ม, และลบสถานที่ศักดิ์สิทธิ์
+//
+// ความสามารถหลัก:
+//   - แสดงตารางสถานที่ทั้งหมด (พร้อม search, sort, pagination)
+//   - เพิ่มสถานที่ใหม่ผ่าน Modal Form (ชื่อ, ประเภท, อำเภอ, นิกาย, พิกัด, ของไหว้, หมวดหมู่)
+//   - ลบสถานที่ (พร้อม confirm dialog)
+//   - คลิก Edit → ไปหน้า /admin/attractions/edit/:id
+//   - หลัง edit จะ highlight แถวที่แก้ไขด้วยสีเหลือง 3 วินาที
+//
+// API ที่เรียก:
+//   GET    /api/attraction      - ดึงสถานที่ทั้งหมด
+//   GET    /api/category        - ดึงหมวดหมู่ (สำหรับ checkbox)
+//   GET    /api/type            - ดึงประเภท (สำหรับ dropdown)
+//   GET    /api/district        - ดึงอำเภอ (สำหรับ dropdown)
+//   GET    /api/sect            - ดึงนิกาย (สำหรับ dropdown)
+//   POST   /api/attraction      - เพิ่มสถานที่ใหม่
+//   DELETE /api/attraction/:id  - ลบสถานที่
+// =============================================================================
+
 import { useState, useEffect, FormEvent, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';

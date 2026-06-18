@@ -1,3 +1,22 @@
+// =============================================================================
+// app/admin/activity-logs/page.tsx
+// =============================================================================
+// หน้าแสดงและจัดการ Activity Logs (/admin/activity-logs)
+// บันทึกการกระทำของผู้ใช้ เช่น view, rate สถานที่
+//
+// ความสามารถหลัก:
+//   - แสดง Stat Cards: จำนวน activity, ผู้ใช้ unique, สถานที่, active today
+//   - แสดง Top Viewed Attractions (อันดับสถานที่ที่ถูกดูมากที่สุด)
+//   - ตาราง activity log พร้อม search, sort, pagination
+//   - ลบ log รายการได้ (พร้อม confirm dialog)
+//   - Export ข้อมูลทั้งหมดเป็นไฟล์ CSV
+//
+// API ที่เรียก:
+//   GET /api/activity-logs        - ดึง log ทั้งหมด
+//   GET /api/activity-logs/stats  - ดึงสถิติ
+//   DELETE /api/activity-logs/:id - ลบ log
+// =============================================================================
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
