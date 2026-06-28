@@ -9,10 +9,12 @@
 #   DELETE /api/activity-logs/{log_id} → ลบ activity log ตาม ID
 # =============================================================================
 
+from typing import List
 from fastapi import APIRouter, HTTPException
 from app.core.database import get_connection
 from app.schemas.schemas import (
-    AttractionCreate, RatingCreate, UserCreate, ActivityLogCreate
+    AttractionCreate, RatingCreate, UserCreate, ActivityLogCreate,
+    ActivityLogResponse, ActivityStatsResponse, NavigationHistoryItem
 )
 
 # กำหนด router สำหรับจัดการ Activity Log (บันทึกกิจกรรมของผู้ใช้)
@@ -38,7 +40,7 @@ async def create_activity_log(log: ActivityLogCreate):
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Database Error: {err}")
 
-@router.get("/activity-logs")
+@router.get("/activity-logs", response_model=List[ActivityLogResponse])
 async def get_activity_logs(limit: int = 100):
     """ดึงบันทึกกิจกรรมของผู้ใช้ พร้อมชื่อผู้ใช้และสถานที่ (จำกัดจำนวน)"""
     try:
@@ -71,7 +73,7 @@ async def get_activity_logs(limit: int = 100):
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Database Error: {err}")
 
-@router.get("/activity-logs/stats")
+@router.get("/activity-logs/stats", response_model=ActivityStatsResponse)
 async def get_activity_stats():
     """ดึงสถิติภาพรวมของกิจกรรม เช่น จำนวนกิจกรรมทั้งหมด ผู้ใช้ที่ไม่ซ้ำ และสถานที่ยอดนิยม"""
     try:
@@ -146,7 +148,7 @@ async def delete_activity_log(log_id: int):
         if conn:
             conn.close()
 
-@router.get("/activity-logs/user/{user_id}/navigations")
+@router.get("/activity-logs/user/{user_id}/navigations", response_model=List[NavigationHistoryItem])
 async def get_user_navigations(user_id: int):
     """ดึงประวัติการนำทาง (view_map) ของผู้ใช้ พร้อมเช็คว่าให้คะแนนหรือยัง"""
     try:

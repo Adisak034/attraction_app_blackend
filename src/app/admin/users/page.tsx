@@ -22,8 +22,8 @@ import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Table } from '@/components/Table';
-import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
-import { confirmAction, showError, showSuccess } from '@/lib/swal';
+import { apiGet, apiPost, apiDelete, apiPut } from '@/lib/apiClient';
+import { confirmAction, showError, showInfo, showSuccess } from '@/lib/swal';
 
 // Interface based on the 'user' table schema
 interface User {
@@ -47,6 +47,8 @@ export default function UserAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [searchParams] = useSearchParams();
@@ -54,6 +56,7 @@ export default function UserAdminPage() {
   const closeAddModal = () => {
     setShowForm(false);
     setFormData(initialFormState);
+    setEditingId(null);
   };
 
   const fetchUsers = async () => {
@@ -100,21 +103,36 @@ export default function UserAdminPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formData.user_name.trim() || !formData.password.trim()) {
-        await showError('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+    if (!formData.user_name.trim()) {
+        await showError('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อผู้ใช้');
+        return;
+    }
+    if (modalMode === 'add' && !formData.password.trim()) {
+        await showError('ข้อมูลไม่ครบ', 'กรุณากรอกรหัสผ่าน');
         return;
     }
     try {
-      await apiPost('/api/users', {
-        user_name: formData.user_name,
-        password: formData.password,
-        role: formData.role,
-      });
-
-      closeAddModal();
-      await fetchUsers();
-      navigate('/admin/users', { replace: true });
-      await showSuccess('บันทึกสำเร็จ', `เพิ่มผู้ใช้ "${formData.user_name.trim()}" เรียบร้อยแล้ว`);
+      if (modalMode === 'edit' && editingId) {
+        await apiPut(`/api/users/${editingId}`, {
+          user_name: formData.user_name,
+          password: formData.password || undefined,
+          role: formData.role || null,
+        });
+        closeAddModal();
+        await fetchUsers();
+        setHighlightedId(editingId);
+        setTimeout(() => setHighlightedId(null), 3000);
+        await showSuccess('แก้ไขสำเร็จ', `แก้ไขข้อมูลผู้ใช้ "${formData.user_name.trim()}" เรียบร้อยแล้ว`);
+      } else {
+        await apiPost('/api/users', {
+          user_name: formData.user_name,
+          password: formData.password,
+          role: formData.role,
+        });
+        closeAddModal();
+        await fetchUsers();
+        await showSuccess('บันทึกสำเร็จ', `เพิ่มผู้ใช้ "${formData.user_name.trim()}" เรียบร้อยแล้ว`);
+      }
     } catch (err) {
       await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
@@ -135,6 +153,38 @@ export default function UserAdminPage() {
     }
   };
 
+  const escapeCsv = (value: string | number | null | undefined) => {
+    const text = String(value ?? '');
+    if (/[",\n]/.test(text)) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+
+  const handleExportCsv = () => {
+    if (users.length === 0) {
+      void showInfo('ไม่มีข้อมูล', 'ไม่มีข้อมูลผู้ใช้งานสำหรับส่งออก');
+      return;
+    }
+
+    const headers = ['user_id', 'user_name'];
+    const rows = users.map((u) => [u.user_id, u.user_name]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCsv(cell)).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `users-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     const tableElement = tableRef.current;
     if (!tableElement) return;
@@ -147,7 +197,17 @@ export default function UserAdminPage() {
       if (editButton) {
         const userId = Number(editButton.dataset.userId);
         if (Number.isFinite(userId)) {
-          navigate(`/admin/users/edit/${userId}`);
+          const userToEdit = users.find((u) => u.user_id === userId);
+          if (userToEdit) {
+            setFormData({
+              user_name: userToEdit.user_name,
+              password: '',
+              role: userToEdit.role || 'user',
+            });
+            setEditingId(userId);
+            setModalMode('edit');
+            setShowForm(true);
+          }
         }
         return;
       }
@@ -180,15 +240,25 @@ export default function UserAdminPage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
         </div>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setFormData(initialFormState);
-          }}
-          className="bg-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-blue-700 font-semibold"
-        >
-          + Add User
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportCsv}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-emerald-700 font-semibold"
+          >
+            Export to CSV
+          </button>
+          <button
+            onClick={() => {
+              setModalMode('add');
+              setEditingId(null);
+              setShowForm(true);
+              setFormData(initialFormState);
+            }}
+            className="bg-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-blue-700 font-semibold"
+          >
+            + Add User
+          </button>
+        </div>
       </div>
 
       {/* Add User Modal */}
@@ -196,7 +266,7 @@ export default function UserAdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Add New User</h2>
+              <h2 className="text-xl font-semibold">{modalMode === 'edit' ? 'Edit User' : 'Add New User'}</h2>
               <button onClick={closeAddModal} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -205,8 +275,8 @@ export default function UserAdminPage() {
                 <input type="text" id="user_name" name="user_name" value={formData.user_name} onChange={handleInputChange} required className="w-full p-2 border rounded-md shadow-sm" />
               </div>
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} required className="w-full p-2 border rounded-md shadow-sm" />
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">{modalMode === 'edit' ? 'New Password' : 'Password *'}</label>
+                <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} required={modalMode === 'add'} placeholder={modalMode === 'edit' ? 'Leave blank to keep current' : ''} className="w-full p-2 border rounded-md shadow-sm" />
               </div>
               <div>
                 <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">Role</label>
@@ -218,7 +288,7 @@ export default function UserAdminPage() {
               </div>
               <div className="md:col-span-3 flex gap-4">
                 <button type="submit" className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 font-semibold">
-                  Add User
+                  {modalMode === 'edit' ? 'Update User' : 'Add User'}
                 </button>
                 <button type="button" onClick={closeAddModal} className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold">
                   Cancel

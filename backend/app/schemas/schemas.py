@@ -18,7 +18,7 @@
 # =============================================================================
 
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import date
 
 # ===== Schemas สำหรับสถานที่ (Attraction) =====
@@ -140,3 +140,53 @@ class ActivityLogCreate(BaseModel):
     user_id: int                            # ID ผู้ใช้
     attraction_id: int                      # ID สถานที่
     action_type: str                        # ประเภทกิจกรรม (เช่น 'view_map', 'rate')
+
+class ActivityLogResponse(BaseModel):
+    """Schema สำหรับส่งข้อมูลบันทึกกิจกรรมกลับไปยัง client"""
+    log_id: int
+    user_id: int
+    user_name: Optional[str] = None
+    attraction_id: int
+    attraction_name: Optional[str] = None
+    action_type: str
+    created_at: Optional[Any] = None
+
+class TopAttractionStat(BaseModel):
+    attraction_id: int
+    attraction_name: Optional[str] = None
+    view_count: int
+
+class ActivityStatsResponse(BaseModel):
+    """Schema สำหรับสถิติภาพรวมกิจกรรม"""
+    total_activities: int
+    unique_users: int
+    unique_attractions: int
+    top_attractions: List[TopAttractionStat]
+
+class NavigationHistoryItem(BaseModel):
+    """Schema สำหรับประวัติการนำทางของผู้ใช้"""
+    attraction_id: int
+    attraction_name: str
+    last_navigated_at: Optional[Any] = None
+    has_rated: int
+
+# ===== Schemas สำหรับระบบแนะนำ (Recommendation) =====
+
+class RecommendationItem(BaseModel):
+    """Schema สำหรับข้อมูลสถานที่แต่ละรายการในคำแนะนำ"""
+    id: str
+    name: str
+    type: str
+    category: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    score: float
+    image: str
+    sacred_object: str
+    offerings: str
+
+class RecommendationResponse(BaseModel):
+    """Schema สำหรับผลลัพธ์การแนะนำสถานที่"""
+    user_id: str
+    is_new_user: bool
+    recommendations: List[RecommendationItem]

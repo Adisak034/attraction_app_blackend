@@ -14,7 +14,6 @@
 import { motion } from 'framer-motion';
 import { X, Star, Sparkles, Heart, MapPin } from 'lucide-react';
 import { useState } from 'react';
-import PlaceMap from './Map';
 
 interface Recommendation {
   id: string;
@@ -31,12 +30,14 @@ interface Recommendation {
 
 interface PlaceDetailModalProps {
   selectedPlace: Recommendation;
+  isNewUser?: boolean;
   onClose: () => void;
   onOpenMap: (place: Recommendation) => void;
 }
 
 export default function PlaceDetailModal({
   selectedPlace,
+  isNewUser,
   onClose,
   onOpenMap
 }: PlaceDetailModalProps) {
@@ -108,7 +109,7 @@ export default function PlaceDetailModal({
           <div className="bg-[#2D0A0A] border border-white/15 rounded-2xl p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-2 sm:mb-3 text-faith-gold">
               <Star size={18} fill="currentColor" />
-              <span className="font-black text-base sm:text-lg">คะแนนรวม</span>
+              <span className="font-black text-base sm:text-lg">{isNewUser ? 'คะแนนความนิยม' : 'คะแนนความเข้ากัน'}</span>
             </div>
             <span className="text-3xl sm:text-4xl font-black text-white leading-none">{selectedPlace.score.toFixed(2)}</span>
           </div>
@@ -129,8 +130,19 @@ export default function PlaceDetailModal({
             <p className="text-white text-sm sm:text-base leading-snug">{selectedPlace.offerings || 'ไม่ระบุข้อมูล'}</p>
           </div>
 
-          <div className="w-full h-44 sm:h-48 rounded-2xl overflow-hidden border border-white/20">
-            <PlaceMap recommendations={[selectedPlace]} className="h-full" />
+          <div className="w-full h-44 sm:h-48 rounded-2xl overflow-hidden border border-white/20 bg-[#1A0404] relative select-none">
+            {/* ชั้นป้องกันการคลิกและลากเลื่อนบนแผนที่ */}
+            <div className="absolute inset-0 z-10 bg-transparent" />
+            <iframe
+              src={`https://maps.google.com/maps?q=${selectedPlace.lat},${selectedPlace.lng}&hl=th&z=15&output=embed`}
+              width="100%"
+              height="100%"
+              className="pointer-events-none"
+              style={{ border: 0, pointerEvents: 'none' }}
+              allowFullScreen={false}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
           </div>
 
           {/* ปุ่มนำทาง (เมื่อกดจะบันทึก Activity Log และเปิด Google Maps) */}

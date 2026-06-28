@@ -128,7 +128,7 @@ export default function NavigationHistory({ userId, userName, onBack, onRatePlac
             ) : history.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center space-y-4 text-gray-400">
                 <Navigation size={48} className="opacity-20" />
-                <p className="text-center font-medium">ยังไม่มีประวัติการกดดูแผนที่ครับ</p>
+                <p className="text-center font-medium">ยังไม่มีประวัติการกดดูแผนที่</p>
               </div>
             ) : filteredHistory.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center space-y-4 text-gray-400">

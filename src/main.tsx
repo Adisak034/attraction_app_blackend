@@ -25,11 +25,8 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import './index.css'
 // import หน้า admin ทั้งหมด
 import AttrationAdminPage from './app/admin/attractions/page'
-import EditAttractionPage from './app/admin/attractions/edit/[id]/page'
 import UserAdminPage from './app/admin/users/page'
-import EditUserPage from './app/admin/users/edit/[id]/page'
 import ImageAdminPage from './app/admin/images/page'
-import EditImagePage from './app/admin/images/edit/[id]/page'
 import RatingAdminPage from './app/admin/ratings/page'
 import CategoryAdminPage from './app/admin/category/page'
 import ActivityLogsPage from './app/admin/activity-logs/page'
@@ -107,11 +104,8 @@ function AdminLayout() {
         <Routes>
           <Route path="/" element={<AdminPage />} />
           <Route path="/attractions" element={<AttrationAdminPage />} />
-          <Route path="/attractions/edit/:id" element={<EditAttractionPage />} />
           <Route path="/users" element={<UserAdminPage />} />
-          <Route path="/users/edit/:id" element={<EditUserPage />} />
           <Route path="/images" element={<ImageAdminPage />} />
-          <Route path="/images/edit/:id" element={<EditImagePage />} />
           <Route path="/ratings" element={<RatingAdminPage />} />
           <Route path="/category" element={<CategoryAdminPage />} />
           <Route path="/activity-logs" element={<ActivityLogsPage />} />

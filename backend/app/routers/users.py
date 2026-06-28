@@ -11,13 +11,26 @@
 #   POST   /api/users/login                  → เข้าสู่ระบบ (username + password)
 #   GET    /api/users/check-username/{name}  → ตรวจสอบว่าชื่อผู้ใช้ซ้ำหรือไม่
 #
-# หมายเหตุ: รหัสผ่านถูกเก็บเป็น plain text (ยังไม่ได้ hash)
+# รหัสผ่านถูกเข้ารหัสด้วย bcrypt ก่อนบันทึกลงฐานข้อมูล
 # =============================================================================
 
+import bcrypt
 from fastapi import APIRouter, HTTPException
 from app.core.database import get_connection
 from app.schemas.schemas import UserCreate, UserUpdate, UserResponse
 from typing import List
+
+def hash_password(plain: str) -> str:
+    """เข้ารหัสรหัสผ่านด้วย bcrypt"""
+    return bcrypt.hashpw(plain.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(plain: str, hashed: str) -> bool:
+    """ตรวจสอบรหัสผ่านกับ hash — รองรับรหัสผ่าน plain-text เดิมด้วย"""
+    try:
+        return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
+    except (ValueError, TypeError):
+        # กรณีรหัสผ่านเดิมเป็น plain text (ยังไม่ได้ hash)
+        return plain == hashed
 
 # กำหนด router สำหรับจัดการข้อมูลผู้ใช้งาน
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -54,9 +67,10 @@ async def create_user(user: UserCreate):
         cursor = connection.cursor(dictionary=True)
         
         # บันทึกข้อมูลผู้ใช้ใหม่ลงฐานข้อมูล
+        hashed_pw = hash_password(user.password)
         cursor.execute(
             "INSERT INTO `user` (user_name, password, role) VALUES (%s, %s, %s)",
-            (user.user_name, user.password, user.role or 'user')
+            (user.user_name, hashed_pw, user.role or 'user')
         )
         
         # ดึง ID ของผู้ใช้ที่เพิ่งสร้าง
@@ -69,7 +83,6 @@ async def create_user(user: UserCreate):
         return {
             "user_id": user_id,
             "user_name": user.user_name,
-            "password": user.password,
             "role": user.role or 'user'
         }
     
@@ -123,7 +136,7 @@ async def update_user(id: int, user: UserUpdate):
             values.append(user.user_name)
         if user.password is not None:
             fields.append("password = %s")
-            values.append(user.password)
+            values.append(hash_password(user.password))
         if user.role is not None:
             fields.append("role = %s")
             values.append(user.role)
@@ -218,8 +231,23 @@ async def login(login_data: dict):
         connection.close()
         
         # ตรวจสอบรหัสผ่าน - ถ้าไม่ตรงหรือไม่พบผู้ใช้ ส่ง 401
-        if not user or user['password'] != password:
+        if not user or not verify_password(password, user['password']):
             raise HTTPException(status_code=401, detail="Invalid username or password")
+        
+        # อัปเกรดรหัสผ่าน plain text เดิมเป็น hash อัตโนมัติ
+        if not user['password'].startswith('$2'):
+            try:
+                conn2 = get_connection()
+                cur2 = conn2.cursor()
+                cur2.execute(
+                    "UPDATE `user` SET password = %s WHERE user_id = %s",
+                    (hash_password(password), user['user_id'])
+                )
+                conn2.commit()
+                cur2.close()
+                conn2.close()
+            except Exception:
+                pass  # ไม่บล็อกการล็อกอินถ้าอัปเกรดไม่สำเร็จ
         
         # ส่งข้อมูลผู้ใช้กลับ (ไม่รวม password)
         return {

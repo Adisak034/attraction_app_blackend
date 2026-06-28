@@ -27,9 +27,18 @@ from app.routers import attractions, users, images, ratings, lookup_tables, acti
 
 # สร้างแอปพลิเคชัน FastAPI พร้อมข้อมูลพื้นฐาน
 app = FastAPI(
-    title="Temple Admin Backend",
-    description="FastAPI Backend for Temple Attractions Management",
-    version="1.0.0"
+    title="Temple Attractions & Recommendation API",
+    description="""
+
+**คุณสมบัติหลัก:**
+- 🏛️ **Attractions Management:** จัดการข้อมูลสถานที่ศักดิ์สิทธิ์, ของไหว้, และหมวดหมู่คำขอพร (การงาน, โชคลาภ, ความรัก)
+- 🤖 **Recommendation System:** ระบบแนะนำสถานที่ (Existing User ใช้ Pickle CF 100%, New User ใช้ Popularity 100%)
+- 📊 **Activity Logs & Navigations:** บันทึกประวัติการนำทางและสถิติการใช้งาน
+- ⭐ **Ratings:** จัดการคะแนนรีวิวตามหมวดหมู่
+    """,
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
 # ตั้งค่า CORS - อนุญาต localhost สำหรับ dev และ origin ที่กำหนดจาก environment สำหรับ server

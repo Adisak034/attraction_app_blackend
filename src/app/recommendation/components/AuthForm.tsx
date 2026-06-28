@@ -126,7 +126,7 @@ export default function AuthForm({
           {/* จดจำบัญชี (Remember Me) */}
           <div className="flex items-center gap-2 sm:gap-3 px-1 cursor-pointer group" onClick={() => setRememberMe(!rememberMe)}>
             <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-faith-gold border-faith-gold' : 'border-white/20'}`}>
-              {rememberMe && <CheckCircle2 size={14} className="sm:size-16 text-black" />}
+              {rememberMe && <CheckCircle2 size={14} className="sm:size-4 text-black" />}
             </div>
             <span className="text-xs sm:text-sm text-gray-300 font-medium group-hover:text-white transition-colors">จดจำบัญชีในอุปกรณ์นี้</span>
           </div>
@@ -147,7 +147,7 @@ export default function AuthForm({
         </form>
 
         <p className="mt-6 sm:mt-6 text-center text-xs sm:text-sm text-gray-400">
-          {step === 'register' ? 'มีบัญชีอยู่แล้ว?' : 'เพิ่งเคยมาที่นี่ครั้งแรก?'} <button type="button" onClick={() => setStep(step === 'register' ? 'login' : 'register')} className="text-faith-gold hover:underline underline-offset-4 ml-1 font-semibold">{step === 'register' ? 'เข้าสู่ระบบ' : 'ลงทะเบียน'}</button>
+          {step === 'register' ? 'มีบัญชีอยู่แล้ว?' : 'เพิ่งเคยมาที่นี่ครั้งแรก?'} <button type="button" onClick={() => { setShowPassword(false); setStep(step === 'register' ? 'login' : 'register'); }} className="text-faith-gold hover:underline underline-offset-4 ml-1 font-semibold">{step === 'register' ? 'เข้าสู่ระบบ' : 'ลงทะเบียน'}</button>
         </p>
       </div>
 

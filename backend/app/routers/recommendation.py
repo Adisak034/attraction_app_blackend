@@ -2,9 +2,9 @@
 # recommendation.py
 # =============================================================================
 # Router สำหรับระบบแนะนำสถานที่ศักดิ์สิทธิ์ (Recommendation System)
-# ใช้อัลกอริทึม Hybrid Collaborative Filtering + Popularity-based Scoring
-#   - CF (70%)         : วิเคราะห์พฤติกรรมผู้ใช้ที่คล้ายกัน (User-based CF)
-#   - Popularity (30%) : คะแนนรวมของสถานที่จากผู้ใช้ทุกคน
+# ใช้อัลกอริทึม Collaborative Filtering และ Popularity-based Scoring
+#   - ผู้ใช้เก่า (Existing User) : ดึงคำแนะนำจากโมเดล Pickle (CF 100%)
+#   - ผู้ใช้ใหม่ (New User)      : ดึงคำแนะนำจากฐานข้อมูล (Popularity 100%)
 #
 # โมเดลถูกโหลดจากไฟล์ .pkl (pickle) แยกตาม 3 หมวดหมู่:
 #   work (การงาน), finance (โชคลาภ), love (ความรัก)
@@ -25,6 +25,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 
 from app.core.database import get_connection
+from app.schemas.schemas import RecommendationResponse
 
 # กำหนด router สำหรับระบบแนะนำสถานที่ (Recommendation System)
 router = APIRouter(tags=["recommendation"])
@@ -256,16 +257,14 @@ def _compute_cf_scores(category: str, user_id: int, visited_ids: set[int]) -> Di
         return {}
 
 
-@router.get("/recommend/{user_id}")
-@router.get("/api/recommend/{user_id}")
+@router.get("/recommend/{user_id}", response_model=RecommendationResponse)
+@router.get("/api/recommend/{user_id}", response_model=RecommendationResponse)
 async def recommend(user_id: int):
-    """แนะนำสถานที่สำหรับผู้ใช้ โดยใช้ CF + Popularity-based Scoring
+    """แนะนำสถานที่ศักดิ์สิทธิ์สำหรับผู้ใช้
     
-    ขั้นตอน:
-    1. ดึงข้อมูลสถานที่ทั้งหมดจากฐานข้อมูล
-    2. คำนวณคะแนนความนิยมจาก rating รวมทุกคน
-    3. คำนวณคะแนน CF จากผู้ใช้ที่มีพฤติกรรมคล้ายกัน
-    4. รวมคะแนน (CF 70% + Popularity 30%) แล้วเรียงลำดับ
+    หลักการทำงาน:
+    - ผู้ใช้เก่า (Existing User ที่เคยให้คะแนน): ใช้คำแนะนำจากโมเดล Collaborative Filtering (.pkl) 100%
+    - ผู้ใช้ใหม่ (New User ยังไม่เคยให้คะแนน): ใช้คำแนะนำจากคะแนนความนิยม (Popularity) จากฐานข้อมูล 100%
     """
     _load_models_once()  # โหลดโมเดลถ้ายังไม่ได้โหลด
 
@@ -348,6 +347,7 @@ async def recommend(user_id: int):
                 user_visited_ids.add(attraction_id)
 
         recommendation_entries = []
+        has_any_cf = False
 
         # คำนวณการแนะนำสำหรับแต่ละหมวดหมู่
         for category_key, category_label in MODEL_CATEGORIES.items():
@@ -358,6 +358,8 @@ async def recommend(user_id: int):
             # หาค่าสูงสุดสำหรับ normalize
             max_pop = max(pop_scores.values(), default=1.0)
             max_cf = max(cf_scores.values(), default=0.0)
+            if max_cf > 0:
+                has_any_cf = True
 
             # รวมคะแนนจากทุกสถานที่ที่มีข้อมูล
             combined_scores: Dict[int, float] = {}
@@ -366,9 +368,9 @@ async def recommend(user_id: int):
                 # Normalize คะแนน popularity (0.0 - 1.0)
                 pop_norm = (pop_scores.get(attraction_id, 0.0) / max_pop) if max_pop > 0 else 0.0
                 if max_cf > 0:
-                    # Normalize คะแนน CF และรวมกัน (CF 70% + Popularity 30%)
+                    # ใช้คะแนน CF จากโมเดล Pickle 100% สำหรับผู้ใช้เดิม
                     cf_norm = cf_scores.get(attraction_id, 0.0) / max_cf
-                    final_score = (cf_norm * 0.7) + (pop_norm * 0.3)
+                    final_score = cf_norm
                 else:
                     # ถ้าไม่มีโมเดล CF ใช้ popularity อย่างเดียว
                     final_score = pop_norm
@@ -400,6 +402,7 @@ async def recommend(user_id: int):
 
         return {
             "user_id": str(user_id),
+            "is_new_user": not has_any_cf,
             "recommendations": recommendation_entries[:150],
         }
 

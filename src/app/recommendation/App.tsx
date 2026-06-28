@@ -44,7 +44,6 @@ import { clearAuthSession, getAuthSession, setAuthSession } from '@/lib/auth';
 import workBg from './assets/work_bg.png';
 import moneyBg from './assets/money_bg.png';
 import loveBg from './assets/love_bg.png';
-import PlaceMap from './components/Map';
 import UserMenu from './components/UserMenu';
 import RatingHistory from './components/RatingHistory';
 import UserProfile from './components/UserProfile';
@@ -394,6 +393,7 @@ function App() {
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [isNewUser, setIsNewUser] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -469,6 +469,7 @@ function App() {
     try {
       const apiRecommendations = await apiGet(`/recommend/${id}`) as {
         recommendations?: Recommendation[];
+        is_new_user?: boolean;
         error?: string;
       };
 
@@ -489,6 +490,7 @@ function App() {
         setError('ไม่พบข้อมูลคำแนะนำจากระบบ');
       }
 
+      setIsNewUser(Boolean(apiRecommendations?.is_new_user));
       setRecommendations(recommendations);
       setStep('results');
     } catch (err: unknown) {
@@ -716,6 +718,7 @@ function App() {
                       setIsAdminSession(false);
                       setUserId('');
                       setUserName('');
+                      setIsNewUser(false);
                       setRecommendations([]);
                       setStep('selection');
                     }}
@@ -844,7 +847,7 @@ function App() {
                                       <Star size={12} className="text-faith-gold fill-faith-gold" />
                                     </div>
                                     <span className="text-sm font-bold text-gray-300 tracking-wider font-mono">
-                                      {item.score.toFixed(1)} <span className="text-gray-500 font-sans tracking-normal font-medium text-xs ml-1">(คะแนนความเข้ากัน)</span>
+                                      {item.score.toFixed(1)} {!isNewUser && <span className="text-gray-500 font-sans tracking-normal font-medium text-xs ml-1">(คะแนนความเข้ากัน)</span>}
                                     </span>
                                   </div>
 
@@ -898,6 +901,7 @@ function App() {
         {selectedPlace && (
           <PlaceDetailModal
             selectedPlace={selectedPlace}
+            isNewUser={isNewUser}
             onClose={() => setSelectedPlace(null)}
             onOpenMap={(place) => {
               const mapUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;

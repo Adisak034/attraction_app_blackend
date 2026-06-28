@@ -25,8 +25,8 @@ import { useState, useEffect, FormEvent, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Table } from '@/components/Table';
-import { apiGet, apiPost, apiDelete } from '@/lib/apiClient';
-import { confirmAction, showError, showSuccess } from '@/lib/swal';
+import { apiGet, apiPost, apiPut } from '@/lib/apiClient';
+import { showError, showSuccess } from '@/lib/swal';
 
 // Interfaces based on the database schema
 interface Attraction {
@@ -89,6 +89,8 @@ export default function AttractionAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -97,6 +99,7 @@ export default function AttractionAdminPage() {
   const closeAddModal = () => {
     setShowForm(false);
     setFormData(initialFormState);
+    setEditingId(null);
   };
 
   // Fetch all necessary data for the page
@@ -190,37 +193,33 @@ export default function AttractionAdminPage() {
         return;
     }
     try {
-      await apiPost('/api/attraction', {
-        ...formData,
-        lat: formData.lat ? parseFloat(formData.lat) : null,
-        lng: formData.lng ? parseFloat(formData.lng) : null,
-        type_id: formData.type_id ? parseInt(formData.type_id, 10) : null,
-        district_id: formData.district_id ? parseInt(formData.district_id, 10) : null,
-        sect_id: formData.sect_id ? parseInt(formData.sect_id, 10) : null,
-      });
-
-      closeAddModal();
-      await fetchData();
-      navigate('/admin/attractions', { replace: true });
-      await showSuccess('บันทึกสำเร็จ', `เพิ่มสถานที่ "${formData.attraction_name.trim()}" เรียบร้อยแล้ว`);
-    } catch (err) {
-      await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
-    }
-  };
-
-  // Handle delete action
-  const handleDelete = async (attractionId: number, attractionName: string) => {
-    const isConfirmed = await confirmAction(
-      'ยืนยันการลบสถานที่',
-      `ต้องการลบ "${attractionName}" ใช่หรือไม่?`
-    );
-    if (!isConfirmed) {
-      return;
-    }
-    try {
-      await apiDelete(`/api/attraction/${attractionId}`);
-      fetchData(); // Refresh data
-      await showSuccess('ลบสำเร็จ', `ลบสถานที่ "${attractionName}" เรียบร้อยแล้ว`);
+      if (modalMode === 'edit' && editingId) {
+        await apiPut(`/api/attraction/${editingId}`, {
+          ...formData,
+          lat: formData.lat ? parseFloat(formData.lat) : null,
+          lng: formData.lng ? parseFloat(formData.lng) : null,
+          type_id: formData.type_id ? parseInt(formData.type_id, 10) : null,
+          district_id: formData.district_id ? parseInt(formData.district_id, 10) : null,
+          sect_id: formData.sect_id ? parseInt(formData.sect_id, 10) : null,
+        });
+        closeAddModal();
+        await fetchData();
+        setHighlightedId(editingId);
+        setTimeout(() => setHighlightedId(null), 3000);
+        await showSuccess('แก้ไขสำเร็จ', `แก้ไขสถานที่ "${formData.attraction_name.trim()}" เรียบร้อยแล้ว`);
+      } else {
+        await apiPost('/api/attraction', {
+          ...formData,
+          lat: formData.lat ? parseFloat(formData.lat) : null,
+          lng: formData.lng ? parseFloat(formData.lng) : null,
+          type_id: formData.type_id ? parseInt(formData.type_id, 10) : null,
+          district_id: formData.district_id ? parseInt(formData.district_id, 10) : null,
+          sect_id: formData.sect_id ? parseInt(formData.sect_id, 10) : null,
+        });
+        closeAddModal();
+        await fetchData();
+        await showSuccess('บันทึกสำเร็จ', `เพิ่มสถานที่ "${formData.attraction_name.trim()}" เรียบร้อยแล้ว`);
+      }
     } catch (err) {
       await showError('เกิดข้อผิดพลาด', err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
     }
@@ -233,22 +232,32 @@ export default function AttractionAdminPage() {
     const handleTableClick = (event: Event) => {
       const target = event.target as HTMLElement;
       const editButton = target.closest('.edit-attraction-btn') as HTMLButtonElement | null;
-      const deleteButton = target.closest('.delete-attraction-btn') as HTMLButtonElement | null;
 
       if (editButton) {
         const attractionId = Number(editButton.dataset.attractionId);
         if (Number.isFinite(attractionId)) {
-          navigate(`/admin/attractions/edit/${attractionId}`);
+          apiGet(`/api/attraction/${attractionId}`).then((data) => {
+            setFormData({
+              attraction_name: data.attraction_name || '',
+              type_id: data.type_id?.toString() || '',
+              district_id: data.district_id?.toString() || '',
+              sect_id: data.sect_id?.toString() || '',
+              lat: data.lat?.toString() || '',
+              lng: data.lng?.toString() || '',
+              sacred_obj: data.sacred_obj || '',
+              offering: data.offering || '',
+              category_ids: Array.isArray(data.categories) 
+                ? data.categories.map((cat: any) => cat.category_id) 
+                : [],
+            });
+            setEditingId(attractionId);
+            setModalMode('edit');
+            setShowForm(true);
+          }).catch((err) => {
+            void showError('โหลดข้อมูลล้มเหลว', err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลสถานที่ได้');
+          });
         }
         return;
-      }
-
-      if (deleteButton) {
-        const attractionId = Number(deleteButton.dataset.attractionId);
-        const attractionName = deleteButton.dataset.attractionName || `ID ${attractionId}`;
-        if (Number.isFinite(attractionId)) {
-          handleDelete(attractionId, attractionName);
-        }
       }
     };
 
@@ -271,15 +280,6 @@ export default function AttractionAdminPage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Attraction Management</h1>
         </div>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setFormData(initialFormState);
-          }}
-          className="bg-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-blue-700 font-semibold"
-        >
-          + Add Attraction
-        </button>
       </div>
 
       {/* Add Attraction Modal */}
@@ -287,7 +287,7 @@ export default function AttractionAdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-6xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Add New Attraction</h2>
+              <h2 className="text-xl font-semibold">{modalMode === 'edit' ? 'Edit Attraction' : 'Add New Attraction'}</h2>
               <button onClick={closeAddModal} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -356,7 +356,7 @@ export default function AttractionAdminPage() {
               {/* Submit Button */}
               <div className="md:col-span-2 lg:col-span-3 flex gap-4">
                 <button type="submit" className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold">
-                  Add Attraction
+                  {modalMode === 'edit' ? 'Update Attraction' : 'Add Attraction'}
                 </button>
                 <button type="button" onClick={closeAddModal} className="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-md shadow-md hover:bg-gray-400 font-semibold">
                   Cancel
@@ -419,14 +419,6 @@ export default function AttractionAdminPage() {
                       data-attraction-id={row.attraction_id}
                     >
                       Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="delete-attraction-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
-                      data-attraction-id={row.attraction_id}
-                      data-attraction-name={row.attraction_name}
-                    >
-                      Delete
                     </button>
                   </div>
                 ),
