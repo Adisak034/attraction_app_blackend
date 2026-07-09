@@ -11,6 +11,8 @@
 - Admin list pages use DataTables with explicit init/destroy in `useEffect` and delegated row action handlers (see `src/app/admin/attractions/page.tsx`, `src/app/admin/users/page.tsx`).
 - Edit pages use `useParams` + `navigate('/admin/<resource>', { replace: true })` after save/cancel.
 - **Map & Location Preview:** In `PlaceDetailModal.tsx` and map previews, use Google Maps HTML iFrame Embed (`output=embed`) locked with both `className="pointer-events-none"` and an `<div className="absolute inset-0 z-10 bg-transparent" />` overlay layer to display instant, unclickable map previews without consuming paid Google Maps JS API quota. Never use Click-to-Load or paid interactive JS maps for preview boxes.
+- **UI/UX Terminology & Domain Labels:** Avoid using raw academic, data science, or technical jargon (e.g., "user_item_matrix", boolean `yes/no`) in user-facing or admin UI. Instead, use descriptive status badge chips in Thai/English (e.g., `🟢 พร้อมใช้งาน (CF 100%)`, `🟠 ใช้ Popularity จาก DB`).
+- **Category Consistency:** Maintain standardized category labels across all frontend and backend displays: `work` = "การงาน (Work)", `finance` = "การเงิน (Finance)", `love` = "ความรัก (Love)".
 
 ## Architecture & Backend
 - Runtime truth: Vite + React Router frontend (`src/main.tsx`) and FastAPI backend (`backend/app/main.py`).
@@ -34,3 +36,8 @@
 - Image URLs may be relative (`/uploads/...`); resolve against backend base URL (`http://localhost:8000`) before previewing.
 - Keep SQL queries parameterized to prevent SQL injection.
 - Do not re-introduce unneeded interactive Google Maps JS API calls that consume quota.
+
+## Code Simplicity & Modification Workflow
+- **Simple & Maintainable Code:** Always use simple, clear, and descriptive variable names. Keep code logic straightforward and avoid unnecessary complexity or over-engineering so that human developers can easily read, understand, and maintain the codebase.
+- **Single Responsibility & Modular Architecture:** When implementing complex logic or endpoints (such as recommendation algorithms), strictly follow the Single Responsibility Principle (SRP). Break down monolithic functions into focused, modular helper functions (e.g., separating database extraction, score calculation, and result formatting) to ensure maximum readability and maintainability.
+- **Transparent Edits & User Confirmation:** Before modifying any code or files, clearly explain and list exactly what changes will be made. Always ask for explicit user confirmation/approval before executing any file modifications.

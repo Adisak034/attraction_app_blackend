@@ -18,8 +18,14 @@
 # =============================================================================
 
 from pydantic import BaseModel
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from datetime import date
+
+# ===== Generic Schema =====
+
+class MessageResponse(BaseModel):
+    """Schema สำหรับส่งข้อความตอบกลับทั่วไป"""
+    message: str
 
 # ===== Schemas สำหรับสถานที่ (Attraction) =====
 
@@ -37,6 +43,7 @@ class AttractionBase(BaseModel):
     lng: Optional[float] = None             # ลองจิจูด
     sacred_obj: Optional[str] = None        # สิ่งศักดิ์สิทธิ์
     offering: Optional[str] = None          # ของบน/ของไหว้
+    attraction_image: Optional[str] = None  # path รูปภาพของสถานที่
 
 class AttractionCreate(AttractionBase):
     """Schema สำหรับสร้างสถานที่ใหม่ - รับ ID หมวดหมู่เพิ่มเติม"""
@@ -50,6 +57,16 @@ class AttractionResponse(AttractionBase):
     """Schema สำหรับส่งข้อมูลสถานที่กลับไปยัง client"""
     attraction_id: int                      # ID ของสถานที่
     categories: Optional[str] = None        # ชื่อหมวดหมู่แบบ string (คั่นด้วยเครื่องหมายจุลภาค)
+
+class AttractionDetailResponse(AttractionBase):
+    """Schema สำหรับส่งข้อมูลสถานที่เดียวพร้อมรายการหมวดหมู่"""
+    attraction_id: int
+    categories: List[CategoryItem] = []
+
+class AttractionCreateResponse(BaseModel):
+    """Schema สำหรับผลลัพธ์หลังสร้างสถานที่ใหม่"""
+    message: str
+    attraction_id: int
 
 # ===== Schemas สำหรับผู้ใช้งาน (User) =====
 
@@ -73,6 +90,22 @@ class UserResponse(UserBase):
     """Schema สำหรับส่งข้อมูลผู้ใช้กลับไปยัง client"""
     user_id: int                            # ID ผู้ใช้
 
+class UserLoginRequest(BaseModel):
+    """Schema สำหรับข้อมูลเข้าสู่ระบบ"""
+    user_name: str
+    password: str
+
+class UserLoginResponse(BaseModel):
+    """Schema สำหรับผลลัพธ์การเข้าสู่ระบบ"""
+    user_id: int
+    user_name: str
+    role: str
+
+class CheckUsernameResponse(BaseModel):
+    """Schema สำหรับผลลัพธ์ตรวจสอบชื่อผู้ใช้ซ้ำ"""
+    exists: bool
+    username: str
+
 # ===== Schemas สำหรับรูปภาพ (Image) =====
 
 class ImageBase(BaseModel):
@@ -93,6 +126,27 @@ class ImageResponse(ImageBase):
     """Schema สำหรับส่งข้อมูลรูปภาพกลับไปยัง client"""
     image_id: int                           # ID รูปภาพ
 
+class ImageItemResponse(BaseModel):
+    """Schema สำหรับข้อมูลรูปภาพของสถานที่"""
+    attraction_id: int
+    attraction_image: Optional[str] = None
+
+class ImageCreateResponse(BaseModel):
+    """Schema สำหรับผลลัพธ์หลังบันทึก path รูปภาพ"""
+    attraction_id: int
+    Image_name: str
+    message: str
+
+class ImageDeleteResponse(BaseModel):
+    """Schema สำหรับผลลัพธ์หลังลบรูปภาพ"""
+    message: str
+    attraction_id: int
+    already_empty: bool
+
+class ImageUploadResponse(BaseModel):
+    """Schema สำหรับผลลัพธ์หลังอัปโหลดไฟล์รูปภาพ"""
+    image_url: str
+
 # ===== Schemas สำหรับคะแนนรีวิว (Rating) =====
 
 class RatingBase(BaseModel):
@@ -110,6 +164,12 @@ class RatingCreate(RatingBase):
 class RatingResponse(RatingBase):
     """Schema สำหรับส่งข้อมูลคะแนนรีวิวกลับไปยัง client"""
     rating_id: int                          # ID คะแนนรีวิว
+
+class RatingDetailResponse(RatingResponse):
+    """Schema สำหรับส่งข้อมูลคะแนนรีวิวพร้อมรายละเอียดชื่อ"""
+    created_at: Optional[Any] = None
+    user_name: Optional[str] = None
+    attraction_name: Optional[str] = None
 
 # ===== Schemas สำหรับตารางข้อมูลอ้างอิง (Lookup Tables) =====
 
@@ -190,3 +250,20 @@ class RecommendationResponse(BaseModel):
     user_id: str
     is_new_user: bool
     recommendations: List[RecommendationItem]
+
+class ModelStatusResponse(BaseModel):
+    """Schema สำหรับตรวจสอบสถานะโมเดลแนะนำ"""
+    models_loaded: Dict[str, bool]
+    stored_files: Dict[str, bool]
+
+class ModelReloadResponse(BaseModel):
+    """Schema สำหรับผลลัพธ์หลังโหลดโมเดลใหม่"""
+    message: str
+    models_loaded: Dict[str, bool]
+
+class ModelUploadResponse(BaseModel):
+    """Schema สำหรับผลลัพธ์หลังอัปโหลดไฟล์โมเดล"""
+    message: str
+    category: str
+    stored_path: str
+    model_loaded: bool
