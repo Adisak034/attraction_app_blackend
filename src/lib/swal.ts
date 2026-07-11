@@ -1,8 +1,8 @@
 // =============================================================================
 // swal.ts
 // =============================================================================
-// Utility สำหรับแสดง Alert/Dialog จากนอก React Component
-// เชื่อมกับ AlertProvider ใน AlertDialog.tsx ผ่าน setAlertFunction()
+// Utility สำหรับแสดง Alert/Dialog จากภายนอก React Component
+// เชื่อมต่อกับ AlertProvider ใน AlertDialog.tsx ผ่าน setAlertFunction()
 //
 // ปัญหาที่แก้: React Hook (useAlert) ไม่สามารถเรียกใช้นอก component ได้
 // วิธีแก้: เก็บ reference ของ showAlert ไว้ใน module-level variable
@@ -12,46 +12,59 @@
 //   showSuccess(title, text)   - dialog สำเร็จ (ปิดอัตโนมัติ 3 วินาที)
 //   showError(title, text)     - dialog error (ปิดอัตโนมัติ 3 วินาที)
 //   showInfo(title, text)      - dialog ข้อมูลทั่วไป (ปิดอัตโนมัติ 3 วินาที)
-//
-// วิธีใช้: import { confirmAction, showSuccess, showError, showInfo } from '@/lib/swal'
 // =============================================================================
 
-import { useAlert } from '@/components/AlertDialog';
+import { useAlert, AlertConfig } from '@/components/AlertDialog';
 
-// เก็บ reference ของ showAlert function เพื่อใช้งานนอก React component
-// จำเป็นเพราะ hook (useAlert) ไม่สามารถเรียกใช้นอก component ได้โดยตรง
-let alertFunction: ReturnType<typeof useAlert>['showAlert'] | null = null;
+type ShowAlertFn = ReturnType<typeof useAlert>['showAlert'];
 
-// ตั้งค่า alert function จาก AppInitializer ใน main.tsx
-export const setAlertFunction = (fn: ReturnType<typeof useAlert>['showAlert']) => {
+let alertFunction: ShowAlertFn | null = null;
+
+/**
+ * ตั้งค่า alert function จาก AppInitializer ใน main.tsx
+ */
+export const setAlertFunction = (fn: ShowAlertFn): void => {
   alertFunction = fn;
 };
 
-// แสดง dialog ยืนยันการดำเนินการ (มีปุ่ม ยืนยัน / ยกเลิก)
-// คืน true ถ้าผู้ใช้กด ยืนยัน, false ถ้ากด ยกเลิก
-export async function confirmAction(title: string, text?: string) {
-  if (!alertFunction) {
-    console.warn('Alert function not initialized');
-    return false;
-  }
+// =============================================================================
+// Internal Helper (DRY Execution)
+// =============================================================================
 
-  return await alertFunction({
-    type: 'warning',
-    title,
-    text,
-    confirmText: 'ยืนยัน',
-    cancelText: 'ยกเลิก',
-  });
+function executeAlert(config: AlertConfig, fallbackResult = true): Promise<boolean> {
+  if (!alertFunction) {
+    console.warn('[swal] Alert function not initialized. Did you wrap your app in <AlertProvider>?');
+    return Promise.resolve(fallbackResult);
+  }
+  return alertFunction(config);
 }
 
-// แสดง dialog แจ้งความสำเร็จ (ปิดอัตโนมัติหลัง 3 วินาที)
-export function showSuccess(title: string, text?: string) {
-  if (!alertFunction) {
-    console.warn('Alert function not initialized');
-    return Promise.resolve();
-  }
+// =============================================================================
+// Public Dialog Utilities
+// =============================================================================
 
-  return alertFunction({
+/**
+ * แสดง dialog ยืนยันการดำเนินการ (มีปุ่ม ยืนยัน / ยกเลิก)
+ * คืนค่า true ถ้าผู้ใช้กด ยืนยัน, false ถ้ากด ยกเลิก
+ */
+export function confirmAction(title: string, text?: string): Promise<boolean> {
+  return executeAlert(
+    {
+      type: 'warning',
+      title,
+      text,
+      confirmText: 'ยืนยัน',
+      cancelText: 'ยกเลิก',
+    },
+    false
+  );
+}
+
+/**
+ * แสดง dialog แจ้งความสำเร็จ (ปิดอัตโนมัติหลัง 3 วินาที)
+ */
+export function showSuccess(title: string, text?: string): Promise<boolean> {
+  return executeAlert({
     type: 'success',
     title,
     text,
@@ -59,14 +72,11 @@ export function showSuccess(title: string, text?: string) {
   });
 }
 
-// แสดง dialog แจ้ง error (ปิดอัตโนมัติหลัง 3 วินาที)
-export function showError(title: string, text?: string) {
-  if (!alertFunction) {
-    console.warn('Alert function not initialized');
-    return Promise.resolve();
-  }
-
-  return alertFunction({
+/**
+ * แสดง dialog แจ้งข้อผิดพลาด (ปิดอัตโนมัติหลัง 3 วินาที)
+ */
+export function showError(title: string, text?: string): Promise<boolean> {
+  return executeAlert({
     type: 'error',
     title,
     text,
@@ -74,14 +84,11 @@ export function showError(title: string, text?: string) {
   });
 }
 
-// แสดง dialog แจ้งข้อมูลทั่วไป (ปิดอัตโนมัติหลัง 3 วินาที)
-export function showInfo(title: string, text?: string) {
-  if (!alertFunction) {
-    console.warn('Alert function not initialized');
-    return Promise.resolve();
-  }
-
-  return alertFunction({
+/**
+ * แสดง dialog แจ้งข้อมูลทั่วไป (ปิดอัตโนมัติหลัง 3 วินาที)
+ */
+export function showInfo(title: string, text?: string): Promise<boolean> {
+  return executeAlert({
     type: 'info',
     title,
     text,

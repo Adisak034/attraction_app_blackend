@@ -1,178 +1,141 @@
-# Temple Admin - Next.js Frontend + FastAPI Backend
+# Temple Admin & Recommendation - React (Vite SPA) + FastAPI Backend
 
-This project has been migrated from a monolithic Next.js application to a split architecture with:
-- **Frontend**: React (via Next.js at `/src`)
-- **Backend**: FastAPI (at `/backend`)
+This document explains the split architecture and design patterns of the **Temple Attractions & Recommendation System**, migrated to a modern, highly decoupled full-stack architecture:
+- **Frontend**: Single Page Application (SPA) built with **React, Vite, TypeScript, and React Router** (located at `/src`).
+- **Backend**: High-performance RESTful API built with **FastAPI, Python, MySQL, and Machine Learning `.pkl` Models** (located at `/backend`).
 
-## Project Structure
+---
+
+## 🏛️ System Architecture Overview
 
 ```
-temple_blackend/
-├── src/                    # Next.js Frontend (React Admin UI)
-│   ├── app/
-│   │   ├── admin/         # Admin pages (attractions, users, images, ratings, categories)
-│   │   └── layout.tsx
-│   └── lib/
-│       └── api.ts         # API communication helpers
-├── backend/               # FastAPI Backend
-│   ├── app/
-│   │   ├── main.py        # FastAPI app entry point
-│   │   ├── core/
-│   │   │   └── database.py # MySQL connection pool
-│   │   ├── routers/       # API route handlers
-│   │   └── schemas/       # Pydantic models
-│   ├── requirements.txt
-│   └── .env.example
-├── appdb.sql              # MySQL database schema
-├── package.json           # Frontend dependencies
-└── README.md
+Frontend (Vite + React Router SPA)             Backend (FastAPI + MySQL)
++------------------------------------+         +----------------------------------+
+|  src/app/recommendation/ (Web App) | <=====> | /recommend (CF / Popularity ML)  |
+|  src/app/admin/* (Control Panel)   | <=====> | /api/* (CRUD + Activity Logs)    |
++------------------------------------+         +----------------------------------+
+                 ^                                               ^
+                 | Axios (src/lib/apiClient.ts)                  | PyMySQL Pool
+                 v                                               v
++------------------------------------+         +----------------------------------+
+|  VITE_API_URL Configuration        |         | MySQL Database (`appdb.sql`)     |
++------------------------------------+         +----------------------------------+
 ```
 
-## Setup Instructions
+---
 
-### Prerequisites
-- Node.js 18+ (for React frontend)
-- Python 3.9+ (for FastAPI backend)
-- MySQL Server running on port 3306
+## 📁 Key Directories & Modules
 
-### 1. Database Setup
-
-```bash
-# Create database
-mysql -u root -p -e "CREATE DATABASE appdb;"
-
-# Import schema
-mysql -u root -p appdb < appdb.sql
-```
-
-### 2. Backend Setup (FastAPI)
-
-```bash
-# Navigate to backend
-cd backend
-
-# Create Python virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Create .env file from example
-copy .env.example .env
-# (Edit .env with your MySQL credentials if different)
-
-# Run FastAPI development server
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-FastAPI will be available at: **http://localhost:8000**
-- API Docs: http://localhost:8000/docs
-- Health Check: http://localhost:8000/health
-
-### 3. Frontend Setup (React + Vite)
-
-```bash
-# From project root
-
-# Install dependencies
-npm install
-
-# Create .env.local (optional, for API URL configuration)
-echo "VITE_API_URL=http://localhost:8000" > .env.local
-
-# Run development server
-npm run dev
-```
-
-React Frontend will be available at: **http://localhost:3000** (or next available port)
-- Admin Panel: http://localhost:3000/admin
-- Dashboard: http://localhost:3000/admin/attractions
-
-## API Endpoints
-
-### Base URL
-- **Backend API**: `http://localhost:8000`
-
-### Main Endpoints
-- **Attractions**: `GET/POST /api/attraction`, `GET/PUT/DELETE /api/attraction/{id}`
-- **Users**: `GET/POST /api/users`, `GET/PUT/DELETE /api/users/{id}`
-- **Images**: `GET/POST /api/image`, `GET/PUT/DELETE /api/image/{id}`, `POST /api/image/upload`
-- **Ratings**: `GET/POST /api/rating`, `DELETE /api/rating/{id}`
-- **Lookup Tables**: `GET /api/category`, `GET /api/district`, `GET /api/type`, `GET /api/sect`
-
-## Key Files
-
-| File | Purpose |
+| Path | Purpose |
 |------|---------|
-| `/backend/app/main.py` | FastAPI app with CORS configuration |
-| `/backend/app/core/database.py` | MySQL connection pool manager |
-| `/backend/app/routers/*.py` | API route handlers |
-| `/src/lib/api.ts` | Frontend API communication helpers |
-| `/src/app/admin/` | React admin UI components |
-| `/appdb.sql` | Database schema (source of truth) |
+| `/src/app/recommendation/` | User Recommendation Web App SPA (Landing view, rating flows, interactive maps, dynamic aesthetics). |
+| `/src/app/admin/` | Admin control panel featuring DataTables for `attractions`, `users`, `images`, `ratings`, `category`, `activity-logs`, and `recommendation-models`. |
+| `/src/lib/apiClient.ts` | Centralized HTTP communication layer featuring `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `apiUploadFile`, and automatic image URL resolution (`resolveImageUrl`). |
+| `/src/lib/auth.ts` | Session state utilities (`isAuthenticated`, `isAdmin`, `getCurrentUser`) powered by `localStorage` persistence. |
+| `/src/lib/swal.ts` | Unified SweetAlert2 dialog helper (`executeAlert`) for standardized user notifications and confirmation popups. |
+| `/backend/app/main.py` | FastAPI application factory, middleware configuration, and CORS setup. |
+| `/backend/app/core/database.py` | Thread-safe PyMySQL database connection pool (`get_connection()`). |
+| `/backend/app/routers/*.py` | Modular API routers implementing Single Responsibility Principle (`recommendation.py`, `activity_log.py`, etc.). |
+| `/backend/app/schemas/schemas.py` | Pydantic data validation and OpenAPI response type definitions. |
+| `/models/*.pkl` | Pickle machine learning models (`item_similarity_work.pkl`, `finance.pkl`, `love.pkl`) for Collaborative Filtering. |
 
-## Frontend to Backend Communication
+---
 
-All React components use the `/src/lib/api.ts` helpers:
+## 🔄 Frontend-to-Backend Communication Pattern
 
+All frontend components communicate with the FastAPI backend through standardized helper functions defined in `src/lib/apiClient.ts`. Never use ad-hoc `fetch()` calls directly inside UI components.
+
+### Example: Standard API Requests
 ```typescript
-import { API_ENDPOINTS, apiGet, apiPost, apiDelete, apiPut } from '@/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete, resolveImageUrl } from '@/lib/apiClient';
 
-// Examples
-const attractions = await apiGet(API_ENDPOINTS.ATTRACTIONS);
-const newAttraction = await apiPost(API_ENDPOINTS.ATTRACTIONS, data);
-await apiDelete(API_ENDPOINTS.ATTRACTION(id));
+// Fetching attractions list
+const attractions = await apiGet<Attraction[]>('/api/attraction');
+
+// Creating a new user
+const newUser = await apiPost<User>('/api/users', userData);
+
+// Updating an existing category
+await apiPut(`/api/category/${categoryId}`, updatedData);
+
+// Deleting a rating
+await apiDelete(`/api/rating/${ratingId}`);
 ```
 
-## CORS Configuration
+### Example: File Uploads & Image URL Resolution
+```typescript
+import { apiUploadFile, resolveImageUrl } from '@/lib/apiClient';
 
-FastAPI is configured to accept requests from:
-- `http://localhost:3000`
-- `http://127.0.0.1:3000`
-- `http://localhost`
+// Uploading an image via multipart/form-data
+const uploadResult = await apiUploadFile('/api/image/upload', file);
 
-Modify `/backend/app/main.py` if you need different origins.
+// Resolving backend relative paths to full absolute URLs for preview
+const previewUrl = resolveImageUrl(attraction.image);
+```
 
-## Build for Production
+---
 
-### Frontend (React)
+## 🔐 Authentication & Route Protection
+
+Frontend routing is managed by `React Router` in `src/main.tsx`. Client-side route protection for the Admin Panel is enforced via the `ProtectedAdminRoute` wrapper:
+
+```tsx
+// src/main.tsx
+const ProtectedAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  if (!isAuthenticated() || !isAdmin()) {
+    return <Navigate to="/recommend" replace />;
+  }
+  return <>{children}</>;
+};
+```
+
+*Note: For production deployments, API endpoints in `backend/app/routers/` should also enforce JWT or OAuth2 bearer token verification middleware.*
+
+---
+
+## 🌐 CORS Configuration (`backend/app/main.py`)
+
+The FastAPI backend explicitly permits requests from configured local development environments and origins listed in `backend/.env` (`CORS_ORIGINS`):
+- `http://localhost:5173` (Vite SPA default port)
+- `http://localhost:3000` (Alternative React dev port)
+- `http://127.0.0.1:5173` / `http://127.0.0.1:3000`
+
+---
+
+## 🛠️ Build & Verification Commands
+
+### Frontend Production Verification
 ```bash
+# Compile TypeScript & bundle assets with Vite
 npm run build
-npm start
+
+# Preview compiled production SPA locally
+npm run preview
 ```
 
-### Backend (FastAPI)
+### Backend Production Execution
 ```bash
 cd backend
-pip install -r requirements.txt
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-## Notes
+---
 
-- **Database**: Same MySQL schema (`appdb.sql`)
-- **Authentication**: Not implemented (add middleware for protected routes in production)
-- **Passwords**: Currently stored in plaintext (use bcrypt in production)
-- **File Uploads**: Images saved to `public/uploads/` (served at `/uploads/`)
+## ❓ Troubleshooting Guide
 
-## Troubleshooting
+### 1. Frontend cannot connect to Backend API
+- Ensure FastAPI is running (`http://localhost:8000/health`).
+- Verify that `VITE_API_URL` is set correctly in `src/.env` or `.env.local`:
+  ```env
+  VITE_API_URL=http://localhost:8000
+  ```
+- Check browser DevTools console for CORS violations; verify `backend/app/main.py` CORS setup.
 
-### Frontend can't connect to Backend
-- Ensure FastAPI is running on port 8000
-- Check CORS settings in `/backend/app/main.py`
-- Verify `NEXT_PUBLIC_API_URL` in frontend `.env.local`
+### 2. Database Connection Errors
+- Verify MySQL service is active on `port 3306`.
+- Inspect connection parameters inside `backend/.env`.
+- Ensure schema is imported: `mysql -u root -p appdb -e "SHOW TABLES;"`.
 
-### Database Connection Error
-- Verify MySQL is running on port 3306
-- Check credentials in `/backend/.env`
-- Ensure database `appdb` exists: `mysql -u root -p appdb -e "SHOW TABLES;"`
-
-### Port Already in Use
-- Change FastAPI port: `python -m uvicorn app.main:app --port 9000`
-- Change React port: `npm run dev -- -p 3001`
+### 3. Recommendation Engine `.pkl` Model Errors
+- If recommendation models show `loaded: no` in `/admin/recommendation-models`, verify that the `.pkl` files exist inside the `/models` directory.
+- Click the **Reload Models** button in the dashboard or send `POST /models/reload` to hot-reload them into memory.

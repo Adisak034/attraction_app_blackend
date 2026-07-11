@@ -11,7 +11,7 @@
 - Admin list pages use DataTables with explicit init/destroy in `useEffect` and delegated row action handlers (see `src/app/admin/attractions/page.tsx`, `src/app/admin/users/page.tsx`).
 - Edit pages use `useParams` + `navigate('/admin/<resource>', { replace: true })` after save/cancel.
 - **Map & Location Preview:** In `PlaceDetailModal.tsx` and map previews, use Google Maps HTML iFrame Embed (`output=embed`) locked with both `className="pointer-events-none"` and an `<div className="absolute inset-0 z-10 bg-transparent" />` overlay layer to display instant, unclickable map previews without consuming paid Google Maps JS API quota. Never use Click-to-Load or paid interactive JS maps for preview boxes.
-- **UI/UX Terminology & Domain Labels:** Avoid using raw academic, data science, or technical jargon (e.g., "user_item_matrix", boolean `yes/no`) in user-facing or admin UI. Instead, use descriptive status badge chips in Thai/English (e.g., `🟢 พร้อมใช้งาน (CF 100%)`, `🟠 ใช้ Popularity จาก DB`).
+- **UI/UX Terminology & Domain Labels:** Avoid using raw academic, data science, or technical jargon (e.g., "user_item_matrix") in general user-facing UI. Instead, use descriptive status badge chips in Thai/English. **Exception for Technical Admin Pages:** On technical system/model management pages such as `recommendation-models/page.tsx`, preserve clear, concise technical status indicators such as `file: yes/no` and `loaded: yes/no` without forcing them into descriptive domain phrases.
 - **Category Consistency:** Maintain standardized category labels across all frontend and backend displays: `work` = "การงาน (Work)", `finance` = "การเงิน (Finance)", `love` = "ความรัก (Love)".
 
 ## Architecture & Backend

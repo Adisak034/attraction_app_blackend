@@ -2,422 +2,188 @@
 // app/recommendation/App.tsx
 // =============================================================================
 // หน้าหลักของ Frontend ผู้ใช้ (Faith Nakonpathom Recommendation App)
-// จัดการ Flow ทั้งหมดตั้งแต่ landing page จนถึงแสดงผลการแนะนำ
+// ทำหน้าที่เป็น State & Flow Coordinator จัดการ State Flow ทั้งหมด
 //
 // State Machine (step):
-//   selection → register / login → results → review / profile
+//   selection → register / login → results → review / profile / navigation_history
 //
-// ความสามารถหลัก:
-//   - Landing page พร้อม animation mandala, particle, background carousel
-//   - ลงทะเบียน / Login (พร้อม remember me ใน localStorage)
-//   - ดึงคำแนะนำสถานที่จาก API ตาม user_id
-//   - แสดงผลการแนะนำแยกตามหมวดหมู่ (LOVE/WEALTH/CAREER)
-//   - Google Maps interactive (ดูในหน้า Map component)
-//   - Rating Modal: ให้คะแนนสถานที่ (work/finance/love) หลังกด "นำทาง"
-//   - UserMenu dropdown: ดูประวัติ, ข้อมูลผู้ใช้, logout
-//   - Detect tab return หลังเปิด Google Maps → แสดง rating modal อัตโนมัติ
-//
-// Sub-components:
-//   - DivineBackground   : animated background (blob, particle, mandala)
-//   - MysticalMandala    : rotating mandala decoration
-//   - StarRating         : interactive star rating (1-5)
-//   - RatingModal        : modal ให้คะแนน work/finance/love
-//   - Map                : Google Maps พร้อมปักหมุดสถานที่
-//   - UserMenu           : dropdown menu ของผู้ใช้
-//   - RatingHistory      : modal แสดงประวัติการให้คะแนน
-//   - UserProfile        : modal แสดงและแก้ไขข้อมูลผู้ใช้
-//
-// API ที่เรียก:
-//   GET  /recommend/:user_id       - ดึงคำแนะนำ
-//   GET  /api/users/check-username - ตรวจสอบชื่อผู้ใช้ซ้ำ
-//   POST /api/users                - สร้างผู้ใช้ใหม่
-//   POST /api/users/login          - login
-//   POST /api/rating               - บันทึกคะแนน
+// Sub-components แยกอิสระ:
+//   - DivineBackground   : พื้นหลัง Animated background (blobs, particles)
+//   - LandingView        : หน้า Landing Page ต้อนรับและแนะนำระบบ
+//   - RecommendationList : แสดงตารางสถานที่แนะนำแยกตามหมวดความเชื่อ
+//   - RatingModal        : หน้าต่าง Modal สำหรับให้คะแนนหลังกลับจาก Google Maps
+//   - PlaceDetailModal   : หน้าต่างรายละเอียดสถานที่และปุ่มเปิด Google Maps
+//   - AuthForm           : แบบฟอร์มเข้าสู่ระบบและลงทะเบียน
+//   - UserMenu           : เมนูลัดจัดการโปรไฟล์, ดูประวัติ, ออกจากระบบ
+//   - ResultsNavBar      : เมนูนำทางด้านบนสำหรับหน้าผลลัพธ์
+//   - ResultsHeroBanner  : ส่วน Hero ภาพขนาดใหญ่และข้อความบนสุดของหน้าผลลัพธ์
+//   - ResultsFooter      : ส่วนท้าย (Footer) หน้าผลลัพธ์
 // =============================================================================
 
-import { useState, useEffect, useMemo } from 'react';
-import { Compass, MapPin, Star, Sparkles, Loader2, Heart, ArrowRight, User, Lock, LogIn, CheckCircle2, X, Eye, EyeOff, Coins, Briefcase } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Compass } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost, resolveImageUrl } from '@/lib/apiClient';
 import { clearAuthSession, getAuthSession, setAuthSession } from '@/lib/auth';
-import workBg from './assets/work_bg.png';
-import moneyBg from './assets/money_bg.png';
 import loveBg from './assets/love_bg.png';
-import UserMenu from './components/UserMenu';
-import RatingHistory from './components/RatingHistory';
-import UserProfile from './components/UserProfile';
-import NavigationHistory from './components/NavigationHistory'; // Re-trigger TS Server
-import PlaceDetailModal from './components/PlaceDetailModal';
+import moneyBg from './assets/money_bg.png';
+import workBg from './assets/work_bg.png';
 import AuthForm from './components/AuthForm';
-
-interface Recommendation {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  lat: number;
-  lng: number;
-  score: number;
-  image?: string;
-  sacred_object?: string;
-  offerings?: string;
-}
+import DivineBackground from './components/DivineBackground';
+import LandingView from './components/LandingView';
+import NavigationHistory from './components/NavigationHistory';
+import PlaceDetailModal from './components/PlaceDetailModal';
+import RatingHistory from './components/RatingHistory';
+import RatingModal from './components/RatingModal';
+import RecommendationList, { Recommendation } from './components/RecommendationList';
+import UserMenu from './components/UserMenu';
+import UserProfile from './components/UserProfile';
 
 type Step = 'selection' | 'register' | 'login' | 'results' | 'review' | 'profile' | 'navigation_history';
 
-interface AttractionApi {
-  attraction_id: number;
-  attraction_name: string;
-  type_id: number | null;
-  lat: number | string | null;
-  lng: number | string | null;
-  sacred_obj?: string | null;
-  offering?: string | null;
-  attraction_image?: string | null;
-  categories?: string | null;
+// =============================================================================
+// Sub-Component: ResultsNavBar
+// =============================================================================
+
+interface ResultsNavBarProps {
+  userName: string;
+  isAdmin: boolean;
+  onNavigateAdmin: () => void;
+  onStepChange: (step: Step) => void;
+  onLogout: () => void;
 }
 
-interface RatingApi {
-  attraction_id: number;
-  rating_work: number;
-  rating_finance: number;
-  rating_love: number;
-}
-
-interface TypeApi {
-  type_id: number;
-  type_name: string;
-}
-
-const CATEGORY_LABELS: Record<'LOVE' | 'WEALTH' | 'CAREER', string> = {
-  LOVE: 'ความรัก',
-  WEALTH: 'โชคลาภ',
-  CAREER: 'การงาน',
-};
-
-const CATEGORY_FILTER_ALIASES: Record<'LOVE' | 'WEALTH' | 'CAREER', string[]> = {
-  LOVE: ['ความรัก'],
-  WEALTH: ['โชคลาภ', 'การเงิน'],
-  CAREER: ['การงาน'],
-};
-
-// Mystical Mandala Component
-const MysticalMandala = () => {
+function ResultsNavBar({ userName, isAdmin, onNavigateAdmin, onStepChange, onLogout }: ResultsNavBarProps) {
   return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden opacity-20">
-      {/* Outer Ring */}
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
-        className="absolute w-[800px] h-[800px] border border-faith-gold/30 rounded-full flex items-center justify-center"
-      >
-        <div className="absolute w-[90%] h-[90%] border border-faith-gold/20 rounded-full border-dashed" />
-        {[...Array(12)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-4 h-4 bg-faith-gold/40 rounded-full"
-            style={{
-              transform: `rotate(${i * 30}deg) translate(400px)`,
-            }}
-          />
-        ))}
-      </motion.div>
-
-      {/* Middle Ring */}
-      <motion.div
-        animate={{ rotate: -360 }}
-        transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
-        className="absolute w-[600px] h-[600px] border border-faith-gold/30 rounded-full flex items-center justify-center"
-      >
-        {[...Array(8)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-32 h-32 border border-faith-gold/20 rounded-full"
-            style={{
-              transform: `rotate(${i * 45}deg) translate(150px)`,
-            }}
-          />
-        ))}
-      </motion.div>
-
-      {/* Inner Ring */}
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-        className="absolute w-[400px] h-[400px] border border-faith-gold/30 rounded-full flex items-center justify-center opacity-50"
-      >
-        <div className="w-full h-full border-4 border-faith-gold/10 rounded-full" />
-        {[...Array(6)].map((_, i) => (
-          <Star
-            key={i}
-            size={24}
-            className="absolute text-faith-gold/40"
-            style={{
-              transform: `rotate(${i * 60}deg) translate(200px) rotate(-${i * 60}deg)`,
-            }}
-          />
-        ))}
-      </motion.div>
-    </div>
-  );
-};
-
-// Animated Background Component
-const DivineBackground = ({ currentBgIndex, backgrounds }: { currentBgIndex: number, backgrounds: string[] }) => {
-  const particles = useMemo(() => {
-    return [...Array(30)].map(() => ({
-      left: Math.random() * 100 + "%",
-      top: (Math.random() * 50 + 50) + "%",
-      delay: Math.random() * 10,
-      duration: Math.random() * 8 + 8,
-      x: (Math.random() - 0.5) * 60
-    }));
-  }, []);
-
-  return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10 bg-[#1A0404]">
-      {/* Background Image Carousel */}
-      <AnimatePresence mode='wait'>
+    <nav className="flex justify-between items-center px-6 md:px-12 py-6 absolute w-full z-50">
+      <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onStepChange('selection')}>
         <motion.div
-          key={currentBgIndex}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.3 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.5 }}
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${backgrounds[currentBgIndex]})` }}
-        />
-      </AnimatePresence>
-      <div className="absolute inset-0 bg-gradient-to-b from-[#1A0404] via-[#1A0404]/80 to-[#1A0404]" />
-
-      {/* Moving Blobs */}
-      <motion.div
-        animate={{
-          x: [0, 80, -40, 0],
-          y: [0, -40, 80, 0],
-          scale: [1, 1.1, 0.95, 1]
-        }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        style={{ willChange: "transform" }}
-        className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-amber-600/10 blur-[120px] rounded-full"
-      />
-      <motion.div
-        animate={{
-          x: [0, -80, 40, 0],
-          y: [0, 80, -40, 0],
-          scale: [1, 1.05, 0.9, 1]
-        }}
-        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-        style={{ willChange: "transform" }}
-        className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-red-800/15 blur-[100px] rounded-full"
-      />
-
-      {/* Divine Sparks (Floating Particles) */}
-      {particles.map((p, i) => (
-        <motion.div
-          key={i}
-          initial={{
-            left: p.left,
-            top: p.top,
-            opacity: 0,
-            scale: 0
-          }}
-          animate={{
-            y: [0, -400],
-            x: [0, p.x],
-            opacity: [0, 0.7, 0],
-            scale: [0, 1, 0]
-          }}
-          transition={{
-            duration: p.duration,
-            repeat: Infinity,
-            delay: p.delay,
-            ease: "linear"
-          }}
-          style={{ willChange: "transform, opacity" }}
-          className="absolute w-1 h-1 bg-faith-gold rounded-full shadow-[0_0_12px_#D4AF37]"
-        />
-      ))}
-
-      <MysticalMandala />
-    </div>
-  );
-};
-
-// --- Star Rating Component ---
-const StarRating = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
-  const [hovered, setHovered] = useState(0);
-  return (
-    <div className="flex gap-2">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          onClick={() => onChange(star)}
-          onMouseEnter={() => setHovered(star)}
-          onMouseLeave={() => setHovered(0)}
-          className="transition-transform hover:scale-125 focus:outline-none"
+          whileHover={{ rotate: 180 }}
+          className="p-2 bg-faith-gold rounded-lg shadow-[0_0_20px_rgba(212,175,55,0.4)]"
         >
-          <Star
-            size={32}
-            className={`transition-colors ${star <= (hovered || value)
-              ? 'text-faith-gold fill-faith-gold'
-              : 'text-gray-600'
-              }`}
-          />
-        </button>
-      ))}
-    </div>
+          <Compass className="text-[#1A0404]" size={20} />
+        </motion.div>
+        <div className="flex flex-col">
+          <span className="text-xl font-black gold-gradient-text tracking-tighter uppercase leading-none">
+            Faith Nakonpathom
+          </span>
+          <span className="text-[8px] text-gray-400 tracking-widest uppercase">ผู้นำทางจิตวิญญาณ</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <UserMenu
+          userName={userName}
+          isAdmin={isAdmin}
+          onNavigateAdmin={onNavigateAdmin}
+          onViewHistory={() => onStepChange('review')}
+          onViewNavigationHistory={() => onStepChange('navigation_history')}
+          onViewProfile={() => onStepChange('profile')}
+          onLogout={onLogout}
+        />
+      </div>
+    </nav>
   );
-};
+}
 
-// --- Rating Modal Component ---
-const RatingModal = ({
-  place,
-  userId,
-  onSubmit,
-  onClose,
-}: {
-  place: { id: string; name: string };
-  userId: string;
-  onSubmit: (ratings: { work: number; finance: number; love: number }) => void;
-  onClose: () => void;
-}) => {
-  const [work, setWork] = useState(0);
-  const [finance, setFinance] = useState(0);
-  const [love, setLove] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
+// =============================================================================
+// Sub-Component: ResultsHeroBanner
+// =============================================================================
 
-  // At least 1 category must be rated to submit (all are optional individually)
-  const hasAny = work > 0 || finance > 0 || love > 0;
+interface ResultsHeroBannerProps {
+  bgUrl: string;
+}
 
-  const handleSubmit = async () => {
-    if (!hasAny) return;
-    setSubmitting(true);
-    try {
-      await apiPost('/api/rating', {
-        user_id: Number(userId),
-        attraction_id: Number(place.id),
-        rating_work: work,
-        rating_finance: finance,
-        rating_love: love,
-      });
-    } catch (e) {
-      console.error('Rating save failed:', e);
-    } finally {
-      setSubmitting(false);
-      onSubmit({ work, finance, love });
-    }
-  };
-
+function ResultsHeroBanner({ bgUrl }: ResultsHeroBannerProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.85, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.85, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="bg-[#1A0404] border border-faith-gold/40 rounded-[2rem] w-full max-w-md p-8 relative shadow-2xl shadow-black/60"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-gray-400 hover:text-white transition-colors"
-        >
-          <X size={20} />
-        </button>
+    <header className="w-full h-[45vh] md:h-[60vh] relative flex flex-col items-center justify-center overflow-hidden mb-10 md:mb-16">
+      <div
+        className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 scale-105"
+        style={{ backgroundImage: `url(${bgUrl})` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#1A0404]/80 via-[#1A0404]/60 to-[#1A0404]" />
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-faith-gold/20 border border-faith-gold/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Star className="text-faith-gold fill-faith-gold" size={32} />
+      <div className="relative z-10 text-center px-4 w-full flex flex-col items-center justify-center flex-1 pt-12">
+        <motion.h2
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-4xl sm:text-5xl md:text-8xl font-black mb-0 gold-gradient-text tracking-normal drop-shadow-2xl pb-6 leading-normal overflow-visible"
+        >
+          สถานที่สายมูในนครปฐม
+        </motion.h2>
+      </div>
+    </header>
+  );
+}
+
+// =============================================================================
+// Sub-Component: ResultsFooter
+// =============================================================================
+
+function ResultsFooter() {
+  return (
+    <footer className="w-full bg-black/40 pt-6 pb-3 border-t border-white/10 mt-auto backdrop-blur-lg">
+      <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between mb-3 gap-4">
+        <div className="max-w-sm">
+          <div className="flex items-center gap-3 mb-2 opacity-60">
+            <Compass size={32} className="text-faith-gold" />
+            <span className="text-xl font-black tracking-widest text-white">Faith Nakonpathom</span>
           </div>
-          <h3 className="text-2xl font-black text-white gold-gradient-text mb-1">ให้คะแนนสถานที่</h3>
-          <p className="text-gray-400 text-sm">{place.name}</p>
-          <p className="text-gray-500 text-xs mt-2">ให้คะแนนในหมวดที่ต้องการ (ไม่บังคับทุกหมวด)</p>
+          <p className="text-xs text-gray-400 leading-relaxed max-w-xs font-light">
+            ค้นพบพลังแห่งจิตวิญญาณแห่งนครปฐม นำความสงบสุขและความเป็นสิริมงคลมาสู่ชีวิตผ่านการแนะนำสถานที่ศักดิ์สิทธิ์
+          </p>
         </div>
+      </div>
 
-        {/* Rating Rows */}
-        <div className="space-y-6 mb-8">
-          {([
-            { label: 'การงาน', icon: '💼', value: work, onChange: setWork },
-            { label: 'การเงิน', icon: '💰', value: finance, onChange: setFinance },
-            { label: 'ความรัก', icon: '❤️', value: love, onChange: setLove },
-          ] as const).map(({ label, icon, value, onChange }) => (
-            <div key={label} className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2 w-24 shrink-0">
-                <span className="text-xl">{icon}</span>
-                <span className="text-sm font-bold text-white">{label}</span>
-              </div>
-              <StarRating value={value} onChange={onChange} />
-            </div>
-          ))}
-        </div>
-
-        {/* Submit Button */}
-        <motion.button
-          whileHover={hasAny ? { scale: 1.02 } : {}}
-          whileTap={hasAny ? { scale: 0.98 } : {}}
-          onClick={handleSubmit}
-          disabled={!hasAny || submitting}
-          className={`w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 ${hasAny
-            ? 'bg-faith-gold text-[#1A0404] shadow-lg shadow-amber-700/30 hover:bg-amber-400'
-            : 'bg-white/10 text-gray-500 cursor-not-allowed'
-            }`}
-        >
-          {submitting ? <Loader2 className="animate-spin" size={22} /> : <><Star size={20} />ส่งคะแนน</>}
-        </motion.button>
-        <button
-          onClick={onClose}
-          className="w-full mt-3 py-3 rounded-2xl text-gray-500 hover:text-gray-300 text-sm font-bold transition-colors"
-        >
-          ข้ามขั้นตอนนี้
-        </button>
-      </motion.div>
-    </motion.div>
+      <div className="max-w-7xl mx-auto px-6 border-t border-white/10 pt-3 flex flex-col items-center">
+        <span className="text-[10px] text-gray-600 tracking-widest uppercase">
+          © 2026 Nakornpathom Faith Experience
+        </span>
+      </div>
+    </footer>
   );
-};
+}
 
-function App() {
+// =============================================================================
+// Main Component (Coordinator)
+// =============================================================================
+
+export default function App() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('selection');
-  // const [selectedInterests, setSelectedInterests] = useState<string[]>([]); // Removed selection logic
+
+  // Auth & User Session States
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isAdminSession, setIsAdminSession] = useState(false);
+
+  // Recommendations & View States
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isNewUser, setIsNewUser] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [currentBg, setCurrentBg] = useState(2);
+  const [currentBg] = useState(2);
   const [navHistoryRefreshCounter, setNavHistoryRefreshCounter] = useState(0);
   const backgrounds = [workBg, moneyBg, loveBg];
 
-  const [activeCategory, setActiveCategory] = useState<string>('LOVE');
-  const [rememberMe, setRememberMe] = useState(false);
+  // Modals & Map Return States
   const [selectedPlace, setSelectedPlace] = useState<Recommendation | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
-  const [isAdminSession, setIsAdminSession] = useState(false);
   const [brokenImageIds, setBrokenImageIds] = useState<Set<string>>(new Set());
-  // ratingTargetPlace: the place the user went to see on Google Maps
   const [ratingTargetPlace, setRatingTargetPlace] = useState<Recommendation | null>(null);
-  // awaitingReturn: true while user is in Google Maps tab
   const [awaitingReturn, setAwaitingReturn] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
 
+  // Restore session or localStorage login on mount
   useEffect(() => {
     const savedId = localStorage.getItem('faith_userId');
     const savedName = localStorage.getItem('faith_userName');
@@ -428,29 +194,26 @@ function App() {
       const sessionId = String(session.user_id);
       setUserId(sessionId);
       setUserName(session.user_name);
-      setFormData(prev => ({ ...prev, name: session.user_name }));
+      setFormData((prev) => ({ ...prev, name: session.user_name }));
 
       if (savedId && savedName) {
         setRememberMe(true);
       }
-
-      // Keep user on logged-in flow after refresh when auth session exists.
-      fetchRecommendations(sessionId);
+      void fetchRecommendations(sessionId);
       return;
     }
 
     if (savedId && savedName) {
       setUserId(savedId);
       setUserName(savedName);
-      setFormData(prev => ({ ...prev, name: savedName }));
+      setFormData((prev) => ({ ...prev, name: savedName }));
       setRememberMe(true);
-      // Auto-restore the results page without re-login
-      fetchRecommendations(savedId);
+      void fetchRecommendations(savedId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Detect when user returns to the tab after opening Google Maps
+  // Detect visibility change when user returns to tab after opening Google Maps
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && awaitingReturn) {
@@ -462,12 +225,11 @@ function App() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [awaitingReturn]);
 
-
   const fetchRecommendations = async (id: string) => {
     setLoading(true);
     setError('');
     try {
-      const apiRecommendations = await apiGet(`/recommend/${id}`) as {
+      const apiRecommendations = (await apiGet(`/recommend/${id}`)) as {
         recommendations?: Recommendation[];
         is_new_user?: boolean;
         error?: string;
@@ -477,7 +239,7 @@ function App() {
         throw new Error(apiRecommendations.error);
       }
 
-      const recommendations = Array.isArray(apiRecommendations?.recommendations)
+      const recs = Array.isArray(apiRecommendations?.recommendations)
         ? apiRecommendations.recommendations.map((item) => ({
           ...item,
           image: resolveImageUrl(item.image),
@@ -486,12 +248,12 @@ function App() {
 
       setBrokenImageIds(new Set());
 
-      if (recommendations.length === 0) {
+      if (recs.length === 0) {
         setError('ไม่พบข้อมูลคำแนะนำจากระบบ');
       }
 
       setIsNewUser(Boolean(apiRecommendations?.is_new_user));
-      setRecommendations(recommendations);
+      setRecommendations(recs);
       setStep('results');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -512,24 +274,25 @@ function App() {
     setLoading(true);
     setError('');
     try {
-      const userName = formData.name.trim();
-      if (!userName) {
+      const nameVal = formData.name.trim();
+      if (!nameVal) {
         setError('กรุณากรอกชื่อผู้ใช้');
         return;
       }
 
-      // Check if username exists using optimized endpoint
-      const checkResult = await apiGet(`/api/users/check-username/${encodeURIComponent(userName)}`) as { exists: boolean };
+      const checkResult = (await apiGet(`/api/users/check-username/${encodeURIComponent(nameVal)}`)) as {
+        exists: boolean;
+      };
       if (checkResult.exists) {
         setError('ชื่อผู้ใช้นี้มีอยู่แล้ว กรุณาใช้ชื่ออื่น');
         return;
       }
 
-      const created = await apiPost('/api/users', {
-        user_name: userName,
+      const created = (await apiPost('/api/users', {
+        user_name: nameVal,
         password: formData.password,
         role: 'user',
-      }) as { user_id: number; user_name: string };
+      })) as { user_id: number; user_name: string };
 
       const uId = String(created.user_id);
       setUserId(uId);
@@ -544,7 +307,7 @@ function App() {
         localStorage.setItem('faith_userId', uId);
         localStorage.setItem('faith_userName', created.user_name);
       }
-      fetchRecommendations(uId);
+      void fetchRecommendations(uId);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(`เกิดข้อผิดพลาดในการลงทะเบียน (${msg})`);
@@ -552,7 +315,6 @@ function App() {
       setLoading(false);
     }
   };
-
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -565,11 +327,10 @@ function App() {
         return;
       }
 
-      // Use optimized login endpoint instead of fetching all users
-      const result = await apiPost('/api/users/login', {
+      const result = (await apiPost('/api/users/login', {
         user_name: inputName,
-        password: formData.password
-      }) as { user_id: number; user_name: string; role: string };
+        password: formData.password,
+      })) as { user_id: number; user_name: string; role: string };
 
       const uId = String(result.user_id);
       setUserId(uId);
@@ -587,7 +348,7 @@ function App() {
         localStorage.removeItem('faith_userId');
         localStorage.removeItem('faith_userName');
       }
-      fetchRecommendations(uId);
+      void fetchRecommendations(uId);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(`เข้าสู่ระบบไม่สำเร็จ (${msg})`);
@@ -596,82 +357,49 @@ function App() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('faith_userId');
+    localStorage.removeItem('faith_userName');
+    clearAuthSession();
+    setIsAdminSession(false);
+    setUserId('');
+    setUserName('');
+    setIsNewUser(false);
+    setRecommendations([]);
+    setStep('selection');
+  };
+
+  const handleOpenGoogleMaps = (place: Recommendation) => {
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
+    setRatingTargetPlace(place);
+    setAwaitingReturn(true);
+
+    apiPost('/api/activity-logs', {
+      user_id: Number(userId),
+      attraction_id: Number(place.id),
+      action_type: 'view_map',
+    }).catch(console.error);
+
+    window.open(mapUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
-    <div className={`min-h-screen flex flex-col text-white selection:bg-faith-gold/30 font-outfit overflow-x-hidden ${(step === 'register' || step === 'login') ? 'overflow-y-hidden' : ''}`}>
+    <div
+      className={`min-h-screen flex flex-col text-white selection:bg-faith-gold/30 font-outfit overflow-x-hidden ${step === 'register' || step === 'login' ? 'overflow-y-hidden' : ''
+        }`}
+    >
       <DivineBackground currentBgIndex={currentBg} backgrounds={backgrounds} />
 
       <div className="flex-1">
         <AnimatePresence mode="wait">
           {step === 'selection' && (
-            <motion.div
-              key="selection"
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-              className="max-w-7xl mx-auto px-6 py-10 relative z-10 min-h-screen flex flex-col"
-            >
-              {/* Top Left Navigation (Login removed) */}
-              {/* Top Right Navigation */}
-              <nav className="flex justify-end items-center gap-4 mb-10">
-                <motion.button
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  onClick={() => setStep('login')}
-                  className="bg-white/10 text-white px-6 py-2.5 sm:px-5 sm:py-2 rounded-full font-bold text-sm sm:text-xs border border-white/10 hover:bg-white/20 transition-all flex items-center gap-2 backdrop-blur-md"
-                >
-                  <LogIn size={18} /> เข้าสู่ระบบ
-                </motion.button>
-              </nav>
-
-              <div className="flex-1 flex flex-col justify-center items-center text-center relative z-20">
-                <div className="mb-20 flex justify-center items-center gap-3">
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }}>
-                    <Sparkles className="text-faith-gold" size={24} />
-                  </motion.div>
-                  <span className="text-faith-gold font-black tracking-[0.3em] text-sm uppercase">Faith Nakonpathom</span>
-                  <motion.div animate={{ rotate: -360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }}>
-                    <Sparkles className="text-faith-gold" size={24} />
-                  </motion.div>
-                </div>
-
-                <motion.h1
-                  initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }}
-                  className="text-4xl sm:text-6xl md:text-9xl font-black mb-8 md:mb-12 gold-gradient-text tracking-normal leading-normal drop-shadow-2xl overflow-visible"
-                >
-                  สถานที่สายมูในนครปฐม
-                </motion.h1>
-
-                <motion.h2
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                  className="text-lg md:text-2xl text-faith-gold font-bold mb-6 tracking-wide drop-shadow-md"
-                >
-                  "ค้นพบเส้นทางสายมูที่ใช่ ในแบบที่เป็นคุณ"
-                </motion.h2>
-
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-                  className="text-gray-300 max-w-3xl text-lg font-light leading-relaxed mb-12 drop-shadow-md mx-auto"
-                >
-                  แพลตฟอร์มแนะนำการท่องเที่ยวเชิงความเชื่อในจังหวัดนครปฐม ที่รวมรวบข้อมูลสถานที่ศักดิ์สิทธิ์และแหล่งท่องเที่ยวสำคัญทั่วจังหวัด โดยใช้ระบบ <span className="text-faith-gold font-medium">Recommendation System</span> มาเป็นผู้ช่วยส่วนตัวในการวิเคราะห์และนำเสนอสถานที่ที่ตรงกับความสนใจของคุณ เพื่อให้ทุกการเดินทางเปี่ยมไปด้วยความหมายและสิริมงคล
-                </motion.p>
-
-                <motion.button
-                  whileHover={{ scale: 1.05, boxShadow: "0 0 40px rgba(212, 175, 55, 0.4)" }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setStep('register')}
-                  className="bg-faith-gold hover:bg-amber-400 text-[#1A0404] px-8 py-4 sm:px-4 sm:py-1.5 rounded-full font-black text-lg sm:text-xs shadow-[0_0_20px_rgba(212,175,55,0.2)] transition-all flex items-center gap-3 mb-20 group"
-                >
-                  <Sparkles size={24} className="group-hover:rotate-12 transition-transform" />
-                  เริ่มต้นเส้นทางศรัทธา
-                  <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
-                </motion.button>
-
-                {/* Features Section Removed */}
-              </div>
-            </motion.div>
+            <LandingView onLoginClick={() => setStep('login')} onStartClick={() => setStep('register')} />
           )}
 
           {(step === 'register' || step === 'login') && (
             <AuthForm
               step={step as 'login' | 'register'}
-              setStep={setStep as any}
+              setStep={setStep as unknown as (step: 'login' | 'register' | 'selection') => void}
               formData={formData}
               setFormData={setFormData}
               showPassword={showPassword}
@@ -688,248 +416,64 @@ function App() {
           {step === 'results' && (
             <motion.div
               key="results"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="w-full relative z-10 font-outfit min-h-screen pb-0 flex flex-col"
             >
-              {/* Navbar */}
-              <nav className="flex justify-between items-center px-6 md:px-12 py-6 absolute w-full z-50">
-                <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setStep('selection')}>
-                  <motion.div whileHover={{ rotate: 180 }} className="p-2 bg-faith-gold rounded-lg shadow-[0_0_20px_rgba(212,175,55,0.4)]">
-                    <Compass className="text-[#1A0404]" size={20} />
-                  </motion.div>
-                  <div className="flex flex-col">
-                    <span className="text-xl font-black gold-gradient-text tracking-tighter uppercase leading-none">Faith Nakonpathom</span>
-                    <span className="text-[8px] text-gray-400 tracking-widest uppercase">ผู้นำทางจิตวิญญาณ</span>
-                  </div>
-                </div>
+              <ResultsNavBar
+                userName={userName}
+                isAdmin={isAdminSession}
+                onNavigateAdmin={() => navigate('/admin')}
+                onStepChange={setStep}
+                onLogout={handleLogout}
+              />
 
-                <div className="flex items-center gap-4">
-                  <UserMenu
-                    userName={userName}
-                    isAdmin={isAdminSession}
-                    onNavigateAdmin={() => navigate('/admin')}
-                    onViewHistory={() => setStep('review')}
-                    onViewNavigationHistory={() => setStep('navigation_history')}
-                    onViewProfile={() => setStep('profile')}
-                    onLogout={() => {
-                      localStorage.removeItem('faith_userId');
-                      localStorage.removeItem('faith_userName');
-                      clearAuthSession();
-                      setIsAdminSession(false);
-                      setUserId('');
-                      setUserName('');
-                      setIsNewUser(false);
-                      setRecommendations([]);
-                      setStep('selection');
-                    }}
-                  />
-                </div>
-              </nav>
-
-              {/* Large Hero Area */}
-              <header className="w-full h-[45vh] md:h-[60vh] relative flex flex-col items-center justify-center overflow-hidden mb-10 md:mb-16">
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 scale-105"
-                  style={{ backgroundImage: `url(${backgrounds[currentBg]})` }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-[#1A0404]/80 via-[#1A0404]/60 to-[#1A0404]" />
-
-                <div className="relative z-10 text-center px-4 w-full flex flex-col items-center justify-center flex-1 pt-12">
-                  <motion.h2
-                    initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-                    className="text-4xl sm:text-5xl md:text-8xl font-black mb-0 gold-gradient-text tracking-normal drop-shadow-2xl pb-6 leading-normal overflow-visible"
-                  >
-                    สถานที่สายมูในนครปฐม
-                  </motion.h2>
-
-                  {/* Mimic the black bar from wireframe as an elegant search or separator */}
-
-                </div>
-              </header>
+              <ResultsHeroBanner bgUrl={backgrounds[currentBg]} />
 
               <main className="max-w-7xl mx-auto px-6 mb-10 flex-1 w-full relative z-20">
                 <div className="flex flex-col mb-12 gap-6 w-full items-center">
                   <h3 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase tracking-tight flex flex-col md:flex-row gap-2 text-center md:text-left">
                     <span className="text-faith-gold">สถานที่</span> <span className="text-white">แนะนำสำหรับคุณ</span>
                   </h3>
-
-                  {/* Filter Buttons - REMOVED */}
-                  {/* Display all recommendations without category filtering */}
                 </div>
 
-                {/* Error State with Retry */}
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-center justify-center py-24 text-center"
-                  >
-                    <div className="w-20 h-20 bg-red-950/50 rounded-full flex items-center justify-center mb-6 border border-red-800/50">
-                      <span className="text-4xl">⚠️</span>
-                    </div>
-                    <h3 className="text-2xl font-black text-white mb-3">ไม่สามารถโหลดคำแนะนำได้</h3>
-                    <p className="text-gray-400 text-sm max-w-md mb-8 leading-relaxed">{error}</p>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                      onClick={() => fetchRecommendations(userId)}
-                      disabled={loading}
-                      className="bg-faith-gold hover:bg-amber-400 text-[#1A0404] px-10 py-4 rounded-full font-black text-base shadow-lg flex items-center gap-2"
-                    >
-                      {loading ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
-                      ลองใหม่อีกครั้ง
-                    </motion.button>
-                  </motion.div>
-                )}
-
-                {/* Grid - Grouped by Category */}
-                {!error && (
-                  <>
-                    {['ความรัก', 'การเงิน', 'การงาน'].map((categoryLabel) => {
-                      const aliases = CATEGORY_FILTER_ALIASES[
-                        categoryLabel === 'ความรัก' ? 'LOVE' :
-                          categoryLabel === 'การเงิน' ? 'WEALTH' :
-                            'CAREER'
-                      ];
-
-                      const filteredByCategory = recommendations
-                        .filter(item => aliases.some((label) => item.category.includes(label)))
-                        .sort((a, b) => b.score - a.score);
-
-                      if (filteredByCategory.length === 0) return null;
-
-                      return (
-                        <div key={categoryLabel} className="w-full mb-12">
-                          <h4 className="text-2xl md:text-3xl font-black text-faith-gold mb-6 uppercase tracking-tight flex items-center gap-3">
-                            {categoryLabel === 'ความรัก' && <Heart size={32} className="text-faith-gold fill-faith-gold" />}
-                            {categoryLabel === 'การเงิน' && <Coins size={32} className="text-faith-gold" />}
-                            {categoryLabel === 'การงาน' && <Briefcase size={32} className="text-faith-gold" />}
-                            <span>{categoryLabel}</span>
-                          </h4>
-                          <div className="flex flex-wrap justify-center gap-6">
-                            {filteredByCategory.slice(0, 5).map((item, index) => (
-                              <motion.div
-                                key={item.id}
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                whileHover={{ y: -10, boxShadow: "0 25px 50px -12px rgba(212,175,55,0.25)" }}
-                                className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] glass-card rounded-[2rem] overflow-hidden flex flex-col border border-white/10 hover:border-faith-gold/50 cursor-pointer transition-all"
-                                onClick={() => setSelectedPlace(item)}
-                              >
-                                {/* Card Image Area */}
-                                <div className="h-56 relative overflow-hidden group/img">
-                                  {item.image && !brokenImageIds.has(item.id) ? (
-                                    <img
-                                      src={item.image}
-                                      alt={item.name}
-                                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110"
-                                      onError={() => {
-                                        setBrokenImageIds((prev) => {
-                                          const next = new Set(prev);
-                                          next.add(item.id);
-                                          return next;
-                                        });
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white/70 text-sm font-bold tracking-wider">
-                                      NO IMAGE
-                                    </div>
-                                  )}
-                                  <div className="absolute inset-0 bg-gradient-to-t from-[#1A0404] via-[#1A0404]/40 to-transparent" />
-                                </div>
-
-                                <div className="p-6 flex-1 flex flex-col">
-                                  <h4 className="text-xl font-black text-white mb-3 line-clamp-1 group-hover:text-faith-gold transition-colors">{item.name}</h4>
-
-                                  {/* Rating */}
-                                  <div className="flex items-center gap-2 mb-4">
-                                    <div className="p-1.5 bg-faith-gold/20 rounded border border-faith-gold/30">
-                                      <Star size={12} className="text-faith-gold fill-faith-gold" />
-                                    </div>
-                                    <span className="text-sm font-bold text-gray-300 tracking-wider font-mono">
-                                      {item.score.toFixed(1)} {!isNewUser && <span className="text-gray-500 font-sans tracking-normal font-medium text-xs ml-1">(คะแนนความเข้ากัน)</span>}
-                                    </span>
-                                  </div>
-
-                                  <p className="text-sm text-gray-400 mb-8 flex-1 line-clamp-2 leading-relaxed font-light">
-                                    {item.sacred_object && item.sacred_object !== "-" ? `สิ่งศักดิ์สิทธิ์: ${item.sacred_object}` : (item.offerings && item.offerings !== "-" ? `ของไหว้: ${item.offerings}` : "สถานที่ศักดิ์สิทธิ์ที่เปี่ยมไปด้วยสิริมงคลและพลังวิเศษ")}
-                                  </p>
-
-                                  <button className="w-full bg-white/5 hover:bg-faith-gold text-white hover:text-[#1A0404] py-4 rounded-xl text-xs font-black uppercase transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-transparent group/btn mt-auto">
-                                    <Sparkles size={16} className="text-faith-gold group-hover/btn:text-[#1A0404]" /> รับเส้นทางการเดินทาง
-                                  </button>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
+                <RecommendationList
+                  recommendations={recommendations}
+                  isNewUser={isNewUser}
+                  error={error}
+                  loading={loading}
+                  brokenImageIds={brokenImageIds}
+                  onImageError={(id) => {
+                    setBrokenImageIds((prev) => {
+                      const next = new Set(prev);
+                      next.add(id);
+                      return next;
+                    });
+                  }}
+                  onSelectPlace={(place) => setSelectedPlace(place)}
+                  onRetry={() => void fetchRecommendations(userId)}
+                />
               </main>
 
-              {/* Footer matching wireframe */}
-              <footer className="w-full bg-black/40 pt-6 pb-3 border-t border-white/10 mt-auto backdrop-blur-lg">
-                <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between mb-3 gap-4">
-                  <div className="max-w-sm">
-                    <div className="flex items-center gap-3 mb-2 opacity-60">
-                      <Compass size={32} className="text-faith-gold" />
-                      <span className="text-xl font-black tracking-widest text-white">Faith Nakonpathom</span>
-                    </div>
-                    <p className="text-xs text-gray-400 leading-relaxed max-w-xs font-light">
-                      ค้นพบพลังแห่งจิตวิญญาณแห่งนครปฐม นำความสงบสุขและความเป็นสิริมงคลมาสู่ชีวิตผ่านการแนะนำสถานที่ศักดิ์สิทธิ์
-                    </p>
-                  </div>
-
-
-                </div>
-
-                <div className="max-w-7xl mx-auto px-6 border-t border-white/10 pt-3 flex flex-col items-center">
-                  <span className="text-[10px] text-gray-600 tracking-widest uppercase">
-                    © 2026 Nakornpathom Faith Experience
-                  </span>
-                </div>
-              </footer>
+              <ResultsFooter />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Detail Modal */}
+      {/* Modals & Sub-pages */}
       <AnimatePresence>
         {selectedPlace && (
           <PlaceDetailModal
             selectedPlace={selectedPlace}
             isNewUser={isNewUser}
             onClose={() => setSelectedPlace(null)}
-            onOpenMap={(place) => {
-              const mapUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
-              // Save which place the user visited so we can show the rating modal on return
-              setRatingTargetPlace(place as any);
-              setAwaitingReturn(true);
-
-              // Log the activity asynchronously
-              apiPost('/api/activity-logs', {
-                user_id: Number(userId),
-                attraction_id: Number(place.id),
-                action_type: 'view_map'
-              }).catch(console.error);
-
-              window.open(mapUrl, '_blank', 'noopener,noreferrer');
-            }}
+            onOpenMap={handleOpenGoogleMaps}
           />
         )}
       </AnimatePresence>
 
-      {/* Footer Branding */}
-      {step === 'selection' && (
-        <footer className="py-12 text-center text-xs font-semibold text-gray-500 relative z-10 pointer-events-none">
-          © 2026 Nakornpathom Faith Experience • AI Recommendation System
-        </footer>
-      )}
-
-      {/* Rating Modal — shows after user returns from Google Maps */}
       <AnimatePresence>
         {showRatingModal && ratingTargetPlace && (
           <RatingModal
@@ -939,35 +483,24 @@ function App() {
             onSubmit={() => {
               setShowRatingModal(false);
               setRatingTargetPlace(null);
-              setNavHistoryRefreshCounter(prev => prev + 1);
+              setNavHistoryRefreshCounter((prev) => prev + 1);
             }}
           />
         )}
       </AnimatePresence>
 
-      {/* Review History Page */}
       <AnimatePresence mode="wait">
         {step === 'review' && (
-          <RatingHistory
-            userId={userId}
-            userName={userName}
-            onBack={() => setStep('results')}
-          />
+          <RatingHistory userId={userId} userName={userName} onBack={() => setStep('results')} />
         )}
       </AnimatePresence>
 
-      {/* User Profile Page */}
       <AnimatePresence mode="wait">
         {step === 'profile' && (
-          <UserProfile
-            userId={userId}
-            userName={userName}
-            onBack={() => setStep('results')}
-          />
+          <UserProfile userId={userId} userName={userName} onBack={() => setStep('results')} />
         )}
       </AnimatePresence>
 
-      {/* Navigation History Page */}
       <AnimatePresence mode="wait">
         {step === 'navigation_history' && (
           <NavigationHistory
@@ -976,7 +509,7 @@ function App() {
             refreshTrigger={navHistoryRefreshCounter}
             onBack={() => setStep('results')}
             onRatePlace={(id: string, name: string) => {
-              setRatingTargetPlace({ id, name } as any);
+              setRatingTargetPlace({ id, name } as unknown as Recommendation);
               setShowRatingModal(true);
             }}
           />
@@ -985,5 +518,3 @@ function App() {
     </div>
   );
 }
-
-export default App;

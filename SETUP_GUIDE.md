@@ -1,385 +1,211 @@
-# Complete Setup Guide
+# Complete Setup & Installation Guide
 
-Follow this guide step-by-step to set up the Temple Admin Dashboard with FastAPI backend and React frontend.
+Follow this comprehensive step-by-step guide to set up, run, and manage the **Temple Attractions & Recommendation System** (FastAPI backend + React Vite SPA frontend).
 
-## Step 1: Verify Prerequisites
+---
 
-### Node.js
+## Step 1: Verify System Prerequisites
+
+### Node.js (Frontend Environment)
 ```bash
-node --version  # Should be 18+
-npm --version   # Should be 8+
+node --version  # Required: v18.0.0 or higher
+npm --version   # Required: v8.0.0 or higher
 ```
 
-### Python
+### Python (Backend Environment)
 ```bash
-python --version  # Should be 3.9+
+python --version  # Required: Python 3.9+ (Python 3.11 or 3.13 recommended)
 pip --version
 ```
 
-### MySQL
+### MySQL Database Server
 ```bash
 mysql --version
-# Start MySQL service if not running (depends on your OS)
+# Ensure the MySQL service is running on your operating system (default port 3306)
 ```
 
-## Step 2: Database Initialization
+---
 
-### Windows PowerShell
+## Step 2: Database Initialization (`appdb.sql`)
+
+### Windows PowerShell / CMD
 ```powershell
-# Connect to MySQL
+# Connect to MySQL as root
 mysql -u root -p
 
-# In MySQL command line:
-CREATE DATABASE appdb;
+# In the MySQL interactive prompt:
+CREATE DATABASE appdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 EXIT;
 
-# Import schema
+# Import the database schema and seed data
 mysql -u root -p appdb < appdb.sql
 ```
 
-### macOS/Linux
+### macOS / Linux
 ```bash
-mysql -u root -p -e "CREATE DATABASE appdb;"
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS appdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -u root -p appdb < appdb.sql
 ```
 
-### Verify Database
+### Verify Tables Imported Successfully
 ```bash
 mysql -u root -p appdb -e "SHOW TABLES;"
-# Should show: attraction, attraction_category, attraction_image, user, rating, category, district, type, sect
 ```
+You should see: `attraction`, `attraction_category`, `attraction_image`, `category`, `district`, `rating`, `sect`, `type`, and `user`.
 
-## Step 3: Backend Setup
+---
 
-### Navigate to Backend Directory
+## Step 3: Backend Setup (FastAPI + Machine Learning Models)
+
+### Navigate to the Backend Directory
 ```bash
 cd backend
 ```
 
-### Create Python Virtual Environment
+### Create & Activate Python Virtual Environment
 
-**Windows:**
-```bash
+**Windows (PowerShell / CMD):**
+```powershell
 python -m venv venv
 venv\Scripts\activate
 ```
 
-**macOS/Linux:**
+**macOS / Linux:**
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-### Install Dependencies
+### Install Python Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### Configure Environment
-The `.env` file is already created with defaults:
+### Check Backend Environment Configuration (`backend/.env`)
+Create or inspect your `backend/.env` file. If using default local MySQL settings:
 ```env
 DB_HOST=127.0.0.1
 DB_USER=root
 DB_PASSWORD=
 DB_NAME=appdb
 DB_PORT=3306
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
+*(If your MySQL server has a root password, set `DB_PASSWORD` accordingly).*
 
-**If your MySQL credentials are different, edit `backend/.env`**
+### Verify Collaborative Filtering Models (`/models/*.pkl`)
+Ensure that your pre-trained machine learning models exist in the root `models/` directory:
+- `models/item_similarity_work.pkl` (Work / การงาน recommendations)
+- `models/finance.pkl` (Finance / การเงิน recommendations)
+- `models/love.pkl` (Love / ความรัก recommendations)
 
-### Start Backend Server
-
-**Important: Navigate to the backend directory first**
-
-**Windows (PowerShell):**
+### Start the FastAPI Development Server
 ```bash
-cd backend
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**macOS/Linux:**
-```bash
-cd backend
-python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+You should see terminal logs indicating the server is active:
 ```
-
-You should see:
-```
-INFO:     Will watch for changes in these directories
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [PID] using StatReload
+INFO:     Application startup complete.
 ```
 
-### Test Backend
-Open in browser: **http://localhost:8000/health**
-Should return: `{"status":"ok","message":"Backend is running"}`
+### Verify Backend Health & API Docs
+- **Health Check**: `http://localhost:8000/health` (Returns `{"status": "ok", "message": "Backend is running"}`)
+- **Interactive Swagger Docs**: `http://localhost:8000/docs`
 
-API Documentation: **http://localhost:8000/docs**
+---
 
-## Step 4: Frontend Setup
+## Step 4: Frontend Setup (React + Vite SPA)
 
-### Navigate to Project Root
+### Open a New Terminal & Navigate to Project Root
 ```bash
-cd ..  # Go back to project root
+# Ensure you are in the main project root directory (temple_blackend)
+pwd
 ```
 
-### Install Dependencies
+### Install Node Dependencies
 ```bash
 npm install
 ```
 
-### Configure Environment
-The `.env.local` file is already created:
+### Configure Frontend Environment (`.env` or `.env.local`)
+Create or verify `src/.env` (or `.env.local` in project root) to point to your FastAPI server:
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8000
 ```
 
-### Start Frontend Server
+### Start the Vite Development Server
 ```bash
 npm run dev
 ```
 
-You should see:
+You should see Vite output:
 ```
-> temple_blackend@0.1.0 dev
-> vite
+  VITE v5.4.21  ready in 320 ms
 
-VITE v5.4.21  ready in 360 ms
-
-  ➜  Local:   http://localhost:3001/
+  ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
 ```
 
-**Note:** If ports 3000-3001 are in use, Vite will automatically use the next available port (3002, 3003, etc.)
+---
 
-## Step 5: Access the Application
+## Step 5: Access & Explore the Application
 
-### Admin Dashboard
-Open in browser: **http://localhost:3001/admin**
-(or **http://localhost:3002/admin** if port 3001 is in use)
+### 🌟 1. User Recommendation Web App (`http://localhost:5173/`)
+- **Landing & Category Selection**: Choose your spiritual blessing goal (`การงาน / Work`, `การเงิน / Finance`, `ความรัก / Love`).
+- **Personalized Recommendations**: Existing users receive Collaborative Filtering AI scores (`CF`); new users receive popularity-ranked top attractions (`Popularity`).
+- **Interactive Map Previews**: View exact attraction locations via instant, unclickable Google Maps embed frames locked with safety overlays (`pointer-events-none`).
+- **Search & Filter**: Filter attractions dynamically by District (` district`), Temple Type (`type`), and Buddhist Sect (`sect`).
+- **Place Detail Modal**: Read rich historical descriptions and submit visitor ratings (`1-5 stars`).
 
-Note: Check the terminal output when `npm run dev` starts to see which port is assigned.
-
-### Sections Available
-- **Attractions** - View, create, edit, delete temple attractions with images and categories
-- **Users** - Manage admin users with roles
-- **Images** - Upload and manage attraction images
-- **Ratings** - View visitor ratings for attractions
-- **Categories** - Browse attraction categories
-
-## Step 6: Server Deployment & Port Forwarding
-
-### Setup for Remote Server (Port Forwarding)
-
-If deploying to a server with port forwarding or on a different machine:
-
-#### Frontend Configuration (.env.local)
-Set `VITE_API_URL` to your server's backend address:
-
-```env
-# For IP address access
-VITE_API_URL=http://192.168.1.100:8000
-
-# For domain access
-VITE_API_URL=https://example.com:8000
-
-# For default port (80/443)
-VITE_API_URL=https://example.com
-```
-
-#### Backend Configuration
-Set `CORS_ORIGINS` environment variable with frontend URLs (comma-separated):
-
-**Windows PowerShell:**
-```powershell
-$env:CORS_ORIGINS = "http://192.168.1.100:3000,https://example.com"
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-**Linux/macOS:**
-```bash
-export CORS_ORIGINS="http://192.168.1.100:3000,https://example.com"
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-#### Run Frontend on Server
-```bash
-npm run build           # Build optimized production version
-npm run preview         # Test the build locally first
-
-# Or deploy to production server
-# Copy built 'dist/' to your web server (nginx, apache, etc.)
-```
-
-#### Example: Using Nginx as Reverse Proxy
-
-```nginx
-# Frontend
-server {
-    listen 80;
-    server_name example.com;
-    root /path/to/dist;
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-
-# Backend
-server {
-    listen 8000;
-    location / {
-        proxy_pass http://localhost:8000;
-    }
-}
-```
-
-#### Test Connection
-1. From the server machine, open browser to `http://192.168.1.100:3000` (or your domain)
-2. Check browser DevTools Console for any CORS errors
-3. Verify backend responds: `http://192.168.1.100:8000/health`
-
-### Troubleshooting Port Forwarding
-
-**CORS Error in Browser Console?**
-- Ensure `CORS_ORIGINS` environment variable includes your frontend URL
-- Restart backend after changing environment variables
-
-**Connection Refused?**
-- Check firewall settings on server (ports 3000, 8000 must be open)
-- Verify backend is running: `curl http://localhost:8000/health`
-
-**Wrong API Address?**
-- Verify `.env.local` has correct `VITE_API_URL`
-- Clear browser cache or use Incognito mode
-- Rebuild frontend: `npm run build`
-
-## Troubleshooting
-
-### Backend: "ModuleNotFoundError: No module named 'app'"
-This happens if you run the uvicorn command from the project root instead of the backend directory.
-
-**Solution:**
-```bash
-cd backend
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-### Port 3000/8000 Already in Use
-
-**Find Process Using Port (Windows):**
-```bash
-netstat -ano | findstr :8000
-taskkill /PID <PID> /F
-```
-
-**Find Process Using Port (macOS/Linux):**
-```bash
-lsof -i :8000
-kill -9 <PID>
-```
-
-**Or Use Different Port:**
-```bash
-# Try port 3001 for frontend
-npm run dev -- -p 3001
-
-# Try port 9000 for backend
-python -m uvicorn app.main:app --port 9000
-# Then update NEXT_PUBLIC_API_URL in .env.local
-```
-
-### MySQL Connection Failed
-```bash
-# Check if MySQL is running
-mysql -u root -p -e "SELECT 1;"
-
-# If connection refused, verify:
-# 1. MySQL service is running
-# 2. Port 3306 is correct (change in backend/.env if needed)
-# 3. Username/password in backend/.env is correct
-```
-
-### Database Tables Not Found
-```bash
-# Verify schema imported
-mysql appdb -e "SHOW TABLES;"
-
-# If empty, reimport
-mysql -u root -p appdb < appdb.sql
-```
-
-### Frontend Shows "Connection Refused"
-```bash
-# 1. Ensure backend is running: http://localhost:8000/health
-# 2. Check NEXT_PUBLIC_API_URL in .env.local
-# 3. Check browser console for specific error
-# 4. Frontend cache: Clear browser cache or open in private window
-```
-
-### Image Upload Not Working
-```bash
-# Create uploads directory if missing
-mkdir public/uploads
-
-# Verify permissions
-ls -la public/uploads  # Should be writable
-```
-
-## Stopping the Servers
-
-### Backend
-Press `Ctrl+C` in the terminal running the backend
-
-### Frontend
-Press `Ctrl+C` in the terminal running the frontend
-
-## Next Steps
-
-### Development
-- See `MIGRATION.md` for details about the architecture migration
-- Check `src/lib/api.ts` for how frontend connects to backend
-- Backend routers in `backend/app/routers/` show API implementations
-
-### Production Deployment
-See README.md for production build commands
-
-### Adding Features
-- Add new API routes in `backend/app/routers/`
-- Create new pages in `src/app/admin/`
-- Keep frontend and backend in sync using `API_ENDPOINTS` from `src/lib/api.ts`
-
-## Database Backup
-
-### Backup Database
-```bash
-mysqldump -u root -p appdb > appdb_backup.sql
-```
-
-### Restore Database
-```bash
-mysql -u root -p appdb < appdb_backup.sql
-```
-
-## Quick Reference
-
-| Task | Command |
-|------|---------|
-| Start Backend | `cd backend && python -m uvicorn app.main:app --reload --port 8000` |
-| Start Frontend | `npm run dev` (from project root) |
-| Access Admin | `http://localhost:3001/admin` (or 3002+ if port in use) |
-| API Docs | `http://localhost:8000/docs` |
-| Check Backend Health | `http://localhost:8000/health` |
-| View MySQL | `mysql appdb -e "SHOW TABLES;"` |
-| Reset Database | `mysql appdb -e "DROP DATABASE appdb; CREATE DATABASE appdb;"` then reimport |
-
-## Additional Resources
-
-- [FastAPI Docs](https://fastapi.tiangolo.com/docs)
-- [Next.js Docs](https://nextjs.org/docs)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [MySQL Docs](https://dev.mysql.com/doc/)
-- [Python Virtual Environments](https://docs.python.org/3/tutorial/venv.html)
+### 🛠️ 2. Admin Control Dashboard (`http://localhost:5173/admin`)
+*(Log in with an administrator account to access management tools)*:
+- **📍 Attractions (`/admin/attractions`)**: Create, update, or delete temple profiles with multi-select categories and latitude/longitude coordinates.
+- **👥 Users (`/admin/users`)**: Manage administrator and regular user accounts (`admin` vs `user` roles) + export lists to `.csv`.
+- **🖼️ Images (`/admin/images`)**: Upload new attraction photos to `public/uploads/` and link them to temple records.
+- **⭐ Ratings (`/admin/ratings`)**: Monitor user ratings and delete inappropriate reviews.
+- **📑 Categories (`/admin/category`)**: Manage system category tags.
+- **📋 Activity Logs (`/admin/activity-logs`)**: Review chronological audit records of all administrative actions (`CREATE`, `UPDATE`, `DELETE`).
+- **🤖 Recommendation Models (`/admin/recommendation-models`)**: Check status of active `.pkl` recommendation files (`file: yes/no`, `loaded: yes/no`) and hot-reload models instantly into backend memory.
 
 ---
 
-Once everything is running, you're ready to start managing temple attractions! 🏯✨
+## Step 6: Server Deployment & Port Forwarding
+
+If deploying on a remote Linux server or cloud virtual machine:
+
+### 1. Configure Frontend API URL for Public Access
+Edit `src/.env` or `.env.local` with the server's public IP or domain:
+```env
+VITE_API_URL=http://your-server-ip:8000
+```
+
+### 2. Run Backend with Gunicorn / Uvicorn Workers
+```bash
+cd backend
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+### 3. Build & Serve Frontend Production Bundle
+```bash
+npm run build
+npm run preview -- --host 0.0.0.0 --port 4173
+```
+Or serve the generated `dist/` directory using **Nginx** or **Apache**.
+
+---
+
+## Troubleshooting & FAQ
+
+### Backend shows `ModuleNotFoundError` on Startup
+Make sure you activated your Python virtual environment (`venv\Scripts\activate`) before running `pip install -r requirements.txt` and starting `uvicorn`.
+
+### Images Not Displaying in Frontend (`404 Not Found`)
+Ensure that uploaded image files exist inside `public/uploads/`. The frontend `resolveImageUrl` function automatically prefixes relative paths (`/uploads/filename.jpg`) with `VITE_API_URL`.
+
+### Recommendation Models Show `loaded: no` in Admin Panel
+Ensure the three `.pkl` files (`item_similarity_work.pkl`, `finance.pkl`, `love.pkl`) are placed inside the `/models/` directory in the project root. Then navigate to `/admin/recommendation-models` and click **Reload Models**.
+
+### Database Permission or Connection Refused
+Verify that MySQL is running on port 3306 and check that `DB_USER` and `DB_PASSWORD` inside `backend/.env` match your database credentials.

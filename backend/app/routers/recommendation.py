@@ -24,7 +24,6 @@ from app.core.database import get_connection
 from app.schemas.schemas import (
     RecommendationResponse, ModelStatusResponse, ModelReloadResponse, ModelUploadResponse
 )
-
 router = APIRouter(tags=["recommendation"])
 
 # หมวดหมู่โมเดล (key ภาษาอังกฤษ → label ภาษาไทย)

@@ -8,8 +8,10 @@
 //   - BrowserRouter     : ระบบ routing ของแอป
 //   - AlertProvider     : Context สำหรับแสดง dialog/alert ทั่วทั้งแอป
 //   - AppInitializer    : เชื่อม showAlert function ให้ใช้ได้นอก component
-//   - ProtectedAdminRoute : Guard ป้องกันหน้า admin (ต้อง login + role=admin)
-//   - AdminLayout       : Layout ครอบ admin section (มี navbar + logout)
+//   - ProtectedAdminRoute : Guard ป้องกันหน้า admin (ใช้ isAuthenticated / isAdmin)
+//   - AdminNavbar       : แถบเมนูด้านบนของหน้า Admin (Go to Website, Logout)
+//   - AdminRoutes       : รวม Routes ทั้งหมดของระบบ Admin
+//   - AdminLayout       : Layout ครอบ admin section
 //
 // Routes หลัก:
 //   /                   → RecommendationPage (หน้าผู้ใช้หลัก)
@@ -19,44 +21,48 @@
 //   /login, /admin/login → redirect ไปหน้าหลัก
 // =============================================================================
 
-import React, { useEffect } from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import './index.css'
-// import หน้า admin ทั้งหมด
-import AttrationAdminPage from './app/admin/attractions/page'
-import UserAdminPage from './app/admin/users/page'
-import ImageAdminPage from './app/admin/images/page'
-import RatingAdminPage from './app/admin/ratings/page'
-import CategoryAdminPage from './app/admin/category/page'
-import ActivityLogsPage from './app/admin/activity-logs/page'
-import AdminPage from './app/admin/page'
-import RecommendationModelsPage from './app/admin/recommendation-models/page'
-// import หน้าผู้ใช้และ utilities
-import RecommendationPage from './app/recommendation/App'
-import PermissionDeniedPage from './app/admin/admin-permission/page'
-import { clearAuthSession, getAuthSession } from './lib/auth'
-import { AlertProvider, useAlert } from './components/AlertDialog'
-import { setAlertFunction } from './lib/swal'
+import React, { useEffect } from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import './index.css';
 
-// Guard สำหรับป้องกันหน้า admin - ถ้าไม่ได้ login จะ redirect ไปหน้าหลัก
-// ถ้า login แล้วแต่ role ไม่ใช่ admin จะ redirect ไปหน้า permission-denied
+// Admin Pages
+import AttrationAdminPage from './app/admin/attractions/page';
+import UserAdminPage from './app/admin/users/page';
+import ImageAdminPage from './app/admin/images/page';
+import RatingAdminPage from './app/admin/ratings/page';
+import CategoryAdminPage from './app/admin/category/page';
+import ActivityLogsPage from './app/admin/activity-logs/page';
+import AdminPage from './app/admin/page';
+import RecommendationModelsPage from './app/admin/recommendation-models/page';
+import PermissionDeniedPage from './app/admin/admin-permission/page';
+
+// User Pages & Shared Utilities
+import RecommendationPage from './app/recommendation/App';
+import { clearAuthSession, getAuthSession, isAuthenticated, isAdmin } from './lib/auth';
+import { AlertProvider, useAlert } from './components/AlertDialog';
+import { setAlertFunction } from './lib/swal';
+
+// =============================================================================
+// Guard Component: ProtectedAdminRoute
+// =============================================================================
+
 function ProtectedAdminRoute({ children }: { children: React.ReactElement }) {
-  const session = getAuthSession();
-
-  if (!session) {
-    return <Navigate to="/" replace />; // ไม่ได้ login
+  if (!isAuthenticated()) {
+    return <Navigate to="/" replace />;
   }
 
-  if (session.role !== 'admin') {
-    return <Navigate to="/admin/admin-permission" replace />; // ไม่มีสิทธิ์
+  if (!isAdmin()) {
+    return <Navigate to="/admin/admin-permission" replace />;
   }
 
   return children;
 }
 
-// Component สำหรับ initialize ระบบ alert ก่อน render หน้าอื่น
-// เชื่อม showAlert function จาก AlertProvider ไปยัง swal.ts เพื่อใช้นอก component
+// =============================================================================
+// Helper Component: AppInitializer
+// =============================================================================
+
 function AppInitializer({ children }: { children: React.ReactNode }) {
   const { showAlert } = useAlert();
 
@@ -67,78 +73,124 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Layout ของ admin section - มี navbar ด้านบนพร้อมปุ่ม logout
-// ครอบทุก route ที่ขึ้นต้นด้วย /admin/*
+// =============================================================================
+// Sub-Component: AdminNavbar
+// =============================================================================
+
+interface AdminNavbarProps {
+  userName?: string;
+  onNavigateHome: () => void;
+  onLogout: () => void;
+}
+
+function AdminNavbar({ userName, onNavigateHome, onLogout }: AdminNavbarProps) {
+  return (
+    <nav className="bg-white shadow-sm p-4 mb-6 sticky top-0 z-40">
+      <div className="container mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-black text-gray-800 tracking-tight">Admin Dashboard</h1>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onNavigateHome}
+            className="px-3.5 py-1.5 text-sm rounded-lg border border-gray-300 font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Go to Website
+          </button>
+
+          {userName && <span className="text-sm font-semibold text-gray-600 px-2">{userName}</span>}
+
+          <button
+            type="button"
+            onClick={onLogout}
+            className="px-3.5 py-1.5 text-sm rounded-lg border border-red-200 font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// =============================================================================
+// Sub-Component: AdminRoutes
+// =============================================================================
+
+function AdminRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<AdminPage />} />
+      <Route path="/attractions" element={<AttrationAdminPage />} />
+      <Route path="/users" element={<UserAdminPage />} />
+      <Route path="/images" element={<ImageAdminPage />} />
+      <Route path="/ratings" element={<RatingAdminPage />} />
+      <Route path="/category" element={<CategoryAdminPage />} />
+      <Route path="/activity-logs" element={<ActivityLogsPage />} />
+      <Route path="/recommendation-models" element={<RecommendationModelsPage />} />
+      <Route path="*" element={<Navigate to="/admin" replace />} />
+    </Routes>
+  );
+}
+
+// =============================================================================
+// Main Layout: AdminLayout
+// =============================================================================
+
 function AdminLayout() {
   const navigate = useNavigate();
   const session = getAuthSession();
 
+  const handleLogout = () => {
+    clearAuthSession();
+    navigate('/', { replace: true });
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Navbar ด้านบน */}
-      <nav className="bg-white shadow-sm p-4 mb-6">
-        <div className="container mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/', { replace: true })}
-              className="px-3 py-1.5 text-sm rounded-md border text-gray-700 hover:bg-gray-50"
-            >
-              Go to Website
-            </button>
-            <span className="text-sm text-gray-500">{session?.user_name}</span>
-            <button
-              onClick={() => {
-                clearAuthSession();       // ลบ session
-                navigate('/', { replace: true }); // กลับหน้าหลัก
-              }}
-              className="px-3 py-1.5 text-sm rounded-md border text-gray-700 hover:bg-gray-50"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </nav>
-      <main className="container mx-auto">
-        {/* Routes ของ admin ทั้งหมด */}
-        <Routes>
-          <Route path="/" element={<AdminPage />} />
-          <Route path="/attractions" element={<AttrationAdminPage />} />
-          <Route path="/users" element={<UserAdminPage />} />
-          <Route path="/images" element={<ImageAdminPage />} />
-          <Route path="/ratings" element={<RatingAdminPage />} />
-          <Route path="/category" element={<CategoryAdminPage />} />
-          <Route path="/activity-logs" element={<ActivityLogsPage />} />
-          <Route path="/recommendation-models" element={<RecommendationModelsPage />} />
-          <Route path="*" element={<Navigate to="/admin" replace />} />
-        </Routes>
+    <div className="min-h-screen bg-gray-100 font-outfit">
+      <AdminNavbar
+        userName={session?.user_name}
+        onNavigateHome={() => navigate('/', { replace: true })}
+        onLogout={handleLogout}
+      />
+      <main className="container mx-auto pb-12 px-4">
+        <AdminRoutes />
       </main>
     </div>
-  )
+  );
 }
 
-// จุดเริ่มต้นของแอปพลิเคชัน - เชื่อม router และ provider ทั้งหมด
+// =============================================================================
+// Application Entry Point
+// =============================================================================
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {/* AlertProvider ครอบทั้งแอปเพื่อให้ทุก component เรียก alert ได้ */}
     <AlertProvider>
-      {/* AppInitializer เชื่อม alert function ก่อน render */}
       <AppInitializer>
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
-            {/* redirect เส้นทาง login เก่าไปหน้าหลัก */}
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/admin/login" element={<Navigate to="/" replace />} />
-            {/* หน้าแจ้งเตือนไม่มีสิทธิ์ (ไม่ต้อง protect เพราะเป็นหน้า error) */}
-          <Route path="/admin/admin-permission" element={<PermissionDeniedPage />} />
-            {/* ทุก route ภายใต้ /admin/* ต้องผ่าน ProtectedAdminRoute */}
-            <Route path="/admin/*" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>} />
-            {/* หน้าผู้ใช้: / และ /recommend แสดง RecommendationPage */}
+
+            <Route path="/admin/admin-permission" element={<PermissionDeniedPage />} />
+
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedAdminRoute>
+                  <AdminLayout />
+                </ProtectedAdminRoute>
+              }
+            />
+
             <Route path="/recommend" element={<RecommendationPage />} />
             <Route path="/" element={<RecommendationPage />} />
           </Routes>
         </BrowserRouter>
       </AppInitializer>
     </AlertProvider>
-  </React.StrictMode>,
-)
+  </React.StrictMode>
+);

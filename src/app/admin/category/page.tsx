@@ -1,13 +1,35 @@
-﻿import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+// =============================================================================
+// app/admin/category/page.tsx
+// =============================================================================
+// หน้าจัดการหมวดหมู่คำขอพร (/admin/category)
+// แสดงตารางหมวดหมู่ทั้งหมดในระบบ เช่น การงาน (work), การเงิน (finance), ความรัก (love)
+//
+// ความสามารถหลัก:
+//   - แสดงตารางหมวดหมู่ทั้งหมด (พร้อมค้นหาและเรียงลำดับ)
+//
+// API ที่เรียก:
+//   GET /api/category - ดึงรายการหมวดหมู่ทั้งหมด
+// =============================================================================
+
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Table } from '@/components/Table';
 import { apiGet } from '@/lib/apiClient';
+
+// =============================================================================
+// Types & Interfaces
+// =============================================================================
 
 interface Category {
   category_id: number;
   category_name: string;
 }
+
+
+// =============================================================================
+// Main Component
+// =============================================================================
 
 export default function CategoryAdminPage() {
   const navigate = useNavigate();
@@ -16,13 +38,14 @@ export default function CategoryAdminPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [, setSearchTerm] = useState('');
 
+  // ดึงข้อมูลรายการหมวดหมู่ทั้งหมดจาก API
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const data: Category[] = await apiGet('/api/category');
-      setCategories(data);
+      const data = await apiGet('/api/category');
+      setCategories(data as Category[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
@@ -39,20 +62,20 @@ export default function CategoryAdminPage() {
   };
 
   const columns = [
-    { key: 'category_id', label: 'ID', sortable: true },
+    { key: 'category_id', label: 'ID', sortable: true, className: 'w-20' },
     { key: 'category_name', label: 'Category Name', sortable: true },
   ];
 
   return (
     <div className="px-4 py-8 bg-gray-50 min-h-screen w-full">
-      {/* Header */}
+      {/* Header Bar */}
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/admin')}
-            aria-label="à¸¢à¹‰à¸à¸™à¸à¸¥à¸±à¸š"
-            title="à¸¢à¹‰à¸à¸™à¸à¸¥à¸±à¸š"
-            className="h-10 w-10 flex items-center justify-center border rounded-md text-gray-700 hover:bg-gray-50"
+            aria-label="ย้อนกลับ"
+            title="ย้อนกลับ"
+            className="h-10 w-10 flex items-center justify-center border rounded-md text-gray-700 hover:bg-gray-50 bg-white shadow-sm"
           >
             <ArrowLeft size={18} />
           </button>
@@ -60,15 +83,15 @@ export default function CategoryAdminPage() {
         </div>
       </div>
 
-      {/* Table Section */}
+      {/* Table Section Card */}
       <div className="border rounded-lg shadow-md bg-white overflow-hidden">
         <div className="p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-800">Categories</h2>
         </div>
         {error && <p className="text-red-500 p-6">{error}</p>}
         {loading && <p className="text-gray-500 p-6">Loading...</p>}
-        <div className="overflow-x-auto">
-          {!loading && !error && (
+        {!loading && !error && (
+          <div className="overflow-x-auto p-4">
             <Table
               ref={tableRef}
               columns={columns}
@@ -76,10 +99,11 @@ export default function CategoryAdminPage() {
               pageSize={10}
               pageSizeOptions={[5, 10, 20, 50]}
               searchable={true}
+              searchPlaceholder="Search categories..."
               onSearch={handleSearch}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
