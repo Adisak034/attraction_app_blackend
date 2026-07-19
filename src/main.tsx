@@ -31,7 +31,6 @@ import AttrationAdminPage from './app/admin/attractions/page';
 import UserAdminPage from './app/admin/users/page';
 import ImageAdminPage from './app/admin/images/page';
 import RatingAdminPage from './app/admin/ratings/page';
-import CategoryAdminPage from './app/admin/category/page';
 import ActivityLogsPage from './app/admin/activity-logs/page';
 import AdminPage from './app/admin/page';
 import RecommendationModelsPage from './app/admin/recommendation-models/page';
@@ -127,7 +126,6 @@ function AdminRoutes() {
       <Route path="/users" element={<UserAdminPage />} />
       <Route path="/images" element={<ImageAdminPage />} />
       <Route path="/ratings" element={<RatingAdminPage />} />
-      <Route path="/category" element={<CategoryAdminPage />} />
       <Route path="/activity-logs" element={<ActivityLogsPage />} />
       <Route path="/recommendation-models" element={<RecommendationModelsPage />} />
       <Route path="*" element={<Navigate to="/admin" replace />} />

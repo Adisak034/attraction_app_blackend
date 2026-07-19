@@ -413,7 +413,7 @@ async def recommend(user_id: int):
                 cf_scores=cf_scores,
                 attraction_map=attraction_map,
             )
-            recommendation_entries.extend(entries)
+            recommendation_entries.extend(entries[:5])
             if is_existing_user:
                 is_new_user = False
 
@@ -423,7 +423,7 @@ async def recommend(user_id: int):
         return {
             "user_id": str(user_id),
             "is_new_user": is_new_user,
-            "recommendations": recommendation_entries[:150],
+            "recommendations": recommendation_entries,
         }
 
     except Exception as error:
