@@ -76,9 +76,9 @@ def _setup_cors_middleware(app_instance: FastAPI) -> None:
 
 
 def _setup_static_uploads_mount(app_instance: FastAPI) -> None:
-    """ตรวจสอบ/สร้างโฟลเดอร์ public/uploads และ Mount StaticFiles สำหรับเซิร์ฟรูปภาพ"""
+    """ตรวจสอบ/สร้างโฟลเดอร์ backend/uploads และ Mount StaticFiles สำหรับเซิร์ฟรูปภาพ"""
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    uploads_dir = os.path.join(project_root, "public", "uploads")
+    uploads_dir = os.path.join(project_root, "backend", "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
     app_instance.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 

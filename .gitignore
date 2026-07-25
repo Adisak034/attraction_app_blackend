@@ -23,10 +23,10 @@ backend/.venv/
 backend/__pycache__/
 backend/*.pyc
 backend/.pytest_cache/
-backend/uploads/
-backend/public/uploads/*
-!backend/public/uploads/.gitkeep
-!backend/public/uploads/mockup.png
+# backend/uploads/
+# backend/public/uploads/*
+# !backend/public/uploads/.gitkeep
+# !backend/public/uploads/mockup.png
 backend/.env
 *.egg-info/
 __pycache__/

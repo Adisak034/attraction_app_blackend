@@ -27,13 +27,13 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import './index.css';
 
 // Admin Pages
-import AttrationAdminPage from './app/admin/attractions/page';
-import UserAdminPage from './app/admin/users/page';
-import ImageAdminPage from './app/admin/images/page';
-import RatingAdminPage from './app/admin/ratings/page';
-import ActivityLogsPage from './app/admin/activity-logs/page';
-import AdminPage from './app/admin/page';
-import PermissionDeniedPage from './app/admin/admin-permission/page';
+import AttrationAdminPage from './app/admin/AttractionAdminPage';
+import UserAdminPage from './app/admin/UserAdminPage';
+import ImageAdminPage from './app/admin/ImageAdminPage';
+import RatingAdminPage from './app/admin/RatingAdminPage';
+import ActivityLogsPage from './app/admin/ActivityLogsPage';
+import AdminPage from './app/admin/AdminDashboardPage';
+import PermissionDeniedPage from './app/admin/PermissionDeniedPage';
 
 // User Pages & Shared Utilities
 import RecommendationPage from './app/recommendation/App';

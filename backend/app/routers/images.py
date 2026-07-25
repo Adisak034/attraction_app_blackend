@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/image", tags=["images"])
 
 # กำหนด path สำหรับเก็บไฟล์รูปภาพที่อัปโหลด
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-UPLOAD_DIR = os.path.join(PROJECT_ROOT, "public", "uploads")
+UPLOAD_DIR = os.path.join(PROJECT_ROOT, "backend", "uploads")
 
 
 # =============================================================================
