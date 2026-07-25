@@ -28,7 +28,7 @@ export function StarRating({ value, onChange }: StarRatingProps) {
   const [hovered, setHovered] = useState(0);
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-1 sm:gap-2">
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={`star-${star}`}
@@ -36,11 +36,11 @@ export function StarRating({ value, onChange }: StarRatingProps) {
           onClick={() => onChange(star)}
           onMouseEnter={() => setHovered(star)}
           onMouseLeave={() => setHovered(0)}
-          className="transition-transform hover:scale-125 focus:outline-none p-1"
+          className="transition-transform hover:scale-125 focus:outline-none p-0.5 sm:p-1"
         >
           <Star
-            size={28}
-            className={`transition-colors ${
+            size={22}
+            className={`sm:w-[28px] sm:h-[28px] transition-colors ${
               star <= (hovered || value) ? 'text-faith-gold fill-faith-gold' : 'text-gray-600'
             }`}
           />
@@ -63,10 +63,10 @@ interface CategoryRatingRowProps {
 
 function CategoryRatingRow({ label, icon, value, onChange }: CategoryRatingRowProps) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex items-center gap-2 w-24 shrink-0">
-        <span className="text-xl">{icon}</span>
-        <span className="text-sm font-bold text-white">{label}</span>
+    <div className="flex items-center justify-between gap-1.5 sm:gap-4">
+      <div className="flex items-center gap-1.5 sm:gap-2 w-20 sm:w-24 shrink-0">
+        <span className="text-lg sm:text-xl">{icon}</span>
+        <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">{label}</span>
       </div>
       <StarRating value={value} onChange={onChange} />
     </div>
@@ -198,7 +198,7 @@ export default function RatingModal({ place, userId, onSubmit, onClose }: Rating
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.85, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="bg-[#1A0404] border border-faith-gold/40 rounded-[2rem] w-full max-w-md p-8 relative shadow-2xl shadow-black/60"
+        className="bg-[#1A0404] border border-faith-gold/40 rounded-[2rem] w-full max-w-md p-5 sm:p-8 relative shadow-2xl shadow-black/60"
         onClick={(e) => e.stopPropagation()}
       >
         <button

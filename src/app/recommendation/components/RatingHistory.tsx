@@ -47,22 +47,22 @@ interface CategoryStarsProps {
 
 function CategoryStars({ label, rating }: CategoryStarsProps) {
   return (
-    <div className="flex flex-col gap-1 bg-black/30 border border-white/5 rounded-lg p-2 text-center">
-      <span className="text-[11px] font-bold text-gray-300">{label}</span>
+    <div className="flex flex-col gap-1 bg-black/30 border border-white/5 rounded-lg p-1.5 sm:p-2 text-center">
+      <span className="text-[10px] sm:text-[11px] font-bold text-gray-300 truncate">{label}</span>
       {rating === 0 ? (
         <span className="text-gray-500 text-xs">-</span>
       ) : (
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex flex-wrap items-center justify-center gap-0.5 sm:gap-1">
           <div className="flex gap-0.5">
             {[...Array(5)].map((_, i) => (
               <Star
                 key={i}
-                size={12}
-                className={i < Math.floor(rating) ? 'fill-faith-gold text-faith-gold' : 'text-gray-600'}
+                size={11}
+                className={`sm:w-3 sm:h-3 ${i < Math.floor(rating) ? 'fill-faith-gold text-faith-gold' : 'text-gray-600'}`}
               />
             ))}
           </div>
-          <span className="text-xs font-bold text-faith-gold ml-0.5">{rating}/5</span>
+          <span className="text-[10px] sm:text-xs font-bold text-faith-gold">{rating}/5</span>
         </div>
       )}
     </div>
