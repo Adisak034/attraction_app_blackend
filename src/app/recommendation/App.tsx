@@ -139,7 +139,7 @@ function ResultsFooter() {
 
       <div className="max-w-7xl mx-auto px-6 border-t border-white/10 pt-3 flex flex-col items-center">
         <span className="text-[10px] text-gray-600 tracking-widest uppercase">
-          © 2026 Nakornpathom Faith Experience
+          © 2026 Faith Nakonpathom
         </span>
       </div>
     </footer>

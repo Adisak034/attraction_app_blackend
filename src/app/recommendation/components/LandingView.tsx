@@ -111,11 +111,10 @@ function LandingHeroCTA({ onStartClick }: LandingHeroCTAProps) {
         whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(212, 175, 55, 0.4)' }}
         whileTap={{ scale: 0.95 }}
         onClick={onStartClick}
-        className="bg-faith-gold hover:bg-amber-400 text-[#1A0404] px-8 py-4 sm:px-4 sm:py-1.5 rounded-full font-black text-lg sm:text-xs shadow-[0_0_20px_rgba(212,175,55,0.2)] transition-all flex items-center gap-3 mb-20 group"
+        className="bg-faith-gold hover:bg-amber-400 text-[#1A0404] px-10 py-5 sm:px-12 sm:py-5 rounded-full font-black text-lg sm:text-xl shadow-[0_0_25px_rgba(212,175,55,0.3)] transition-all flex items-center gap-3.5 mb-20 group"
       >
-        <Sparkles size={24} className="group-hover:rotate-12 transition-transform" />
         <span>เริ่มต้นเส้นทางศรัทธา</span>
-        <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
+        <ArrowRight size={26} className="group-hover:translate-x-1 transition-transform" />
       </motion.button>
     </>
   );
@@ -142,7 +141,7 @@ export default function LandingView({ onLoginClick, onStartClick }: LandingViewP
       </div>
 
       <footer className="py-12 text-center text-xs font-semibold text-gray-500 relative z-10 pointer-events-none mt-auto">
-        © 2026 Nakornpathom Faith Experience • AI Recommendation System
+        © 2026 Faith Nakonpathom • AI Recommendation System
       </footer>
     </motion.div>
   );
