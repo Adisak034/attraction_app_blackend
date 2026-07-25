@@ -251,19 +251,3 @@ class RecommendationResponse(BaseModel):
     is_new_user: bool
     recommendations: List[RecommendationItem]
 
-class ModelStatusResponse(BaseModel):
-    """Schema สำหรับตรวจสอบสถานะโมเดลแนะนำ"""
-    models_loaded: Dict[str, bool]
-    stored_files: Dict[str, bool]
-
-class ModelReloadResponse(BaseModel):
-    """Schema สำหรับผลลัพธ์หลังโหลดโมเดลใหม่"""
-    message: str
-    models_loaded: Dict[str, bool]
-
-class ModelUploadResponse(BaseModel):
-    """Schema สำหรับผลลัพธ์หลังอัปโหลดไฟล์โมเดล"""
-    message: str
-    category: str
-    stored_path: str
-    model_loaded: bool

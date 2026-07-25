@@ -3,9 +3,6 @@
 # =============================================================================
 # Endpoints:
 #   GET  /api/recommend/{user_id}       → แนะนำสถานที่สำหรับผู้ใช้
-#   GET  /api/recommend/models/status   → ตรวจสอบสถานะโมเดล
-#   POST /api/recommend/models/reload   → โหลดโมเดลใหม่
-#   POST /api/recommend/models/upload   → อัปโหลดไฟล์โมเดล (.pkl)
 #
 # หลักการแนะนำ:
 #   - ผู้ใช้เก่า (เคยให้คะแนน) → Collaborative Filtering จากไฟล์ .pkl 100%
@@ -15,15 +12,13 @@
 import math
 import os
 import pickle
-import shutil
 from typing import Dict, Any, Tuple, List, Set
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException
 
 from app.core.database import get_connection
-from app.schemas.schemas import (
-    RecommendationResponse, ModelStatusResponse, ModelReloadResponse, ModelUploadResponse
-)
+from app.schemas.schemas import RecommendationResponse
+
 router = APIRouter(tags=["recommendation"])
 
 # หมวดหมู่โมเดล (key ภาษาอังกฤษ → label ภาษาไทย)
@@ -107,68 +102,6 @@ def _load_models_once(force: bool = False):
 
     _models_loaded = True
 
-
-# ---------------------------------------------------------------------------
-# Endpoints: Model management
-# ---------------------------------------------------------------------------
-
-def _is_model_ready(category: str) -> bool:
-    """ตรวจสอบว่าโมเดลของหมวดหมู่นั้นโหลดครบแล้วหรือไม่"""
-    return (
-        models[category]["user_similarity"] is not None
-        and models[category]["user_item_matrix"] is not None
-    )
-
-
-@router.get("/api/recommend/models/status", response_model=ModelStatusResponse)
-async def recommendation_model_status():
-    """ตรวจสอบสถานะโมเดลแนะนำ — โหลดอยู่หรือไม่ และมีไฟล์บันทึกหรือไม่"""
-    _load_models_once()
-    return {
-        "models_loaded": {cat: _is_model_ready(cat) for cat in MODEL_CATEGORIES},
-        "stored_files": {cat: os.path.exists(_saved_model_path(cat)) for cat in MODEL_CATEGORIES},
-    }
-
-
-@router.post("/api/recommend/models/reload", response_model=ModelReloadResponse)
-async def reload_recommendation_models():
-    """โหลดโมเดลแนะนำใหม่ทั้งหมด (ใช้เมื่ออัปโหลดโมเดลใหม่)"""
-    _load_models_once(force=True)
-    return {
-        "message": "Recommendation models reloaded",
-        "models_loaded": {cat: _is_model_ready(cat) for cat in MODEL_CATEGORIES},
-    }
-
-
-@router.post("/api/recommend/models/upload", response_model=ModelUploadResponse)
-async def upload_recommendation_model(
-    category: str = Form(...),
-    file: UploadFile = File(...),
-):
-    """อัปโหลดไฟล์โมเดลแนะนำ (.pkl) สำหรับหมวดหมู่ที่ระบุ"""
-    category = (category or "").strip().lower()
-    if category not in MODEL_CATEGORIES:
-        raise HTTPException(status_code=400, detail="category must be one of: work, finance, love")
-
-    if not (file.filename or "").lower().endswith(".pkl"):
-        raise HTTPException(status_code=400, detail="Only .pkl files are allowed")
-
-    destination = _saved_model_path(category)
-    try:
-        with open(destination, "wb") as out:
-            shutil.copyfileobj(file.file, out)
-        _load_models_once(force=True)
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {error}")
-    finally:
-        await file.close()
-
-    return {
-        "message": "Model uploaded successfully",
-        "category": category,
-        "stored_path": destination,
-        "model_loaded": models[category]["user_similarity"] is not None,
-    }
 
 
 # ---------------------------------------------------------------------------

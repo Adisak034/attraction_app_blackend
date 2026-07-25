@@ -33,7 +33,6 @@ import ImageAdminPage from './app/admin/images/page';
 import RatingAdminPage from './app/admin/ratings/page';
 import ActivityLogsPage from './app/admin/activity-logs/page';
 import AdminPage from './app/admin/page';
-import RecommendationModelsPage from './app/admin/recommendation-models/page';
 import PermissionDeniedPage from './app/admin/admin-permission/page';
 
 // User Pages & Shared Utilities
@@ -127,7 +126,6 @@ function AdminRoutes() {
       <Route path="/images" element={<ImageAdminPage />} />
       <Route path="/ratings" element={<RatingAdminPage />} />
       <Route path="/activity-logs" element={<ActivityLogsPage />} />
-      <Route path="/recommendation-models" element={<RecommendationModelsPage />} />
       <Route path="*" element={<Navigate to="/admin" replace />} />
     </Routes>
   );
