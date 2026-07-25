@@ -52,15 +52,10 @@ interface AuthFormHeaderProps {
 function AuthFormHeader({ isRegister }: AuthFormHeaderProps) {
   return (
     <div className="text-center mb-8 sm:mb-7">
-      <motion.div
-        initial={{ rotateY: 0 }}
-        animate={{ rotateY: 360 }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-        className="w-16 h-16 sm:w-14 sm:h-14 bg-faith-gold rounded-2xl flex items-center justify-center mx-auto mb-6 sm:mb-5 shadow-2xl shadow-amber-500/30 text-[#1A0404]"
-      >
+      <div className="w-16 h-16 sm:w-14 sm:h-14 bg-faith-gold rounded-2xl flex items-center justify-center mx-auto mb-6 sm:mb-5 shadow-2xl shadow-amber-500/30 text-[#1A0404]">
         {isRegister ? <User size={32} className="sm:hidden" /> : <LogIn size={32} className="sm:hidden" />}
         {isRegister ? <User size={26} className="hidden sm:block" /> : <LogIn size={26} className="hidden sm:block" />}
-      </motion.div>
+      </div>
       <h2 className="text-2xl font-black mb-2 gold-gradient-text uppercase tracking-tight">
         {isRegister ? 'ลงทะเบียน' : 'ยินดีต้อนรับกลับมา'}
       </h2>
