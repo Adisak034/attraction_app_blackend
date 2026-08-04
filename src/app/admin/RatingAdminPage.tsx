@@ -244,18 +244,18 @@ export default function RatingAdminPage() {
       sortable: true,
       render: (val: unknown) => formatDateTimeCell(val as string),
     },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_: unknown, rating: Rating) => (
-        <button
-          onClick={() => handleDelete(rating.rating_id, rating.user_name, rating.attraction_id)}
-          className="bg-red-600 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
-        >
-          Delete
-        </button>
-      ),
-    },
+    // {
+    //   key: 'actions',
+    //   label: 'Actions',
+    //   render: (_: unknown, rating: Rating) => (
+    //     <button
+    //       onClick={() => handleDelete(rating.rating_id, rating.user_name, rating.attraction_id)}
+    //       className="bg-gray-600 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
+    //     >
+    //       Delete
+    //     </button>
+    //   ),
+    // },
   ];
 
   return (

@@ -67,9 +67,9 @@ function LandingHeroTitle() {
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="text-4xl sm:text-6xl md:text-9xl font-black mb-8 md:mb-12 gold-gradient-text tracking-normal leading-normal drop-shadow-2xl overflow-visible"
+        className="text-2xl sm:text-4xl md:text-6xl font-black mb-8 md:mb-12 gold-gradient-text tracking-normal leading-normal drop-shadow-2xl overflow-visible"
       >
-        สถานที่สายมูในนครปฐม
+        การท่องเที่ยวเชิงความเชื่อในจังหวัดนครปฐม
       </motion.h1>
 
       <motion.h2
@@ -78,7 +78,7 @@ function LandingHeroTitle() {
         transition={{ delay: 0.3 }}
         className="text-lg md:text-2xl text-faith-gold font-bold mb-6 tracking-wide drop-shadow-md"
       >
-        &ldquo;ค้นพบเส้นทางสายมูที่ใช่ ในแบบที่เป็นคุณ&rdquo;
+        &ldquo;ค้นพบเส้นทางท่องเที่ยวในแบบที่เป็นคุณ&rdquo;
       </motion.h2>
     </>
   );
@@ -101,9 +101,10 @@ function LandingHeroCTA({ onStartClick }: LandingHeroCTAProps) {
         transition={{ delay: 0.4 }}
         className="text-gray-300 max-w-3xl text-lg font-light leading-relaxed mb-12 drop-shadow-md mx-auto"
       >
-        แพลตฟอร์มแนะนำการท่องเที่ยวเชิงความเชื่อในจังหวัดนครปฐม ที่รวมรวบข้อมูลสถานที่ศักดิ์สิทธิ์และแหล่งท่องเที่ยวสำคัญทั่วจังหวัด โดยใช้ระบบ{' '}
+        แพลตฟอร์มท่องเที่ยวเชิงความเชื่อ จังหวัดนครปฐม
+        รวบรวมสถานที่ศักดิ์สิทธิ์และจุดท่องเที่ยวสำคัญทั่วจังหวัด พร้อมระบบ{' '}
         <span className="text-faith-gold font-medium">Recommendation System</span>{' '}
-        มาเป็นผู้ช่วยส่วนตัวในการวิเคราะห์และนำเสนอสถานที่ที่ตรงกับความสนใจของคุณ เพื่อให้ทุกการเดินทางเปี่ยมไปด้วยความหมายและสิริมงคล
+        ที่ทำหน้าที่เป็นผู้ช่วยส่วนตัว คอยวิเคราะห์และนำเสนอสถานที่ตามความสนใจของคุณ เพื่อให้ทุกการเดินทางเต็มไปด้วยความหมายและเป็นสิริมงคล
       </motion.p>
 
       <motion.button

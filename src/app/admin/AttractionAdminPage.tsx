@@ -535,13 +535,13 @@ export default function AttractionAdminPage() {
       label: 'Actions',
       render: (_: unknown, row: Attraction) => (
         <div className="flex gap-2 justify-center">
-          <button
+          {/* <button
             type="button"
             className="edit-attraction-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm"
             data-attraction-id={row.attraction_id}
           >
             Edit
-          </button>
+          </button> */}
         </div>
       ),
     },

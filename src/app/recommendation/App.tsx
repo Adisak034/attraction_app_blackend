@@ -109,9 +109,9 @@ function ResultsHeroBanner({ bgUrl }: ResultsHeroBannerProps) {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-4xl sm:text-5xl md:text-8xl font-black mb-0 gold-gradient-text tracking-normal drop-shadow-2xl pb-6 leading-normal overflow-visible"
+          className="text-4xl sm:text-5xl md:text-7xl font-black mb-0 gold-gradient-text tracking-normal drop-shadow-2xl pb-6 leading-normal overflow-visible"
         >
-          สถานที่สายมูในนครปฐม
+          การท่องเที่ยวเชิงความเชื่อในจังหวัดนครปฐม
         </motion.h2>
       </div>
     </header>

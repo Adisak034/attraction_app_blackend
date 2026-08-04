@@ -97,8 +97,8 @@ function RecommendationCard({
     item.sacred_object && item.sacred_object !== '-'
       ? `สิ่งศักดิ์สิทธิ์: ${item.sacred_object}`
       : item.offerings && item.offerings !== '-'
-      ? `ของไหว้: ${item.offerings}`
-      : 'สถานที่ศักดิ์สิทธิ์ที่เปี่ยมไปด้วยสิริมงคลและพลังวิเศษ';
+        ? `ของไหว้: ${item.offerings}`
+        : 'สถานที่ศักดิ์สิทธิ์ที่เปี่ยมไปด้วยสิริมงคลและพลังวิเศษ';
 
   return (
     <motion.div
@@ -153,10 +153,10 @@ function RecommendationCard({
         {/* CTA Button */}
         <button
           type="button"
-          className="w-full bg-white/5 hover:bg-faith-gold text-white hover:text-[#1A0404] py-4 rounded-xl text-xs font-black uppercase transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-transparent group/btn mt-auto"
+          className="w-full bg-white hover:bg-gray-100 text-black text-[18px] font-light py-4 rounded-xl transition-all flex items-center justify-center gap-2 border border-white group/btn mt-auto"
         >
-          <Sparkles size={16} className="text-faith-gold group-hover/btn:text-[#1A0404]" />
-          <span>รับเส้นทางการเดินทาง</span>
+          {/* <Sparkles size={18} className="text-faith-gold" /> */}
+          <span>เดินทาง</span>
         </button>
       </div>
     </motion.div>
@@ -186,7 +186,7 @@ function CategorySection({
 }: CategorySectionProps) {
   const aliases =
     CATEGORY_FILTER_ALIASES[
-      categoryLabel === 'ความรัก' ? 'LOVE' : categoryLabel === 'การเงิน' ? 'WEALTH' : 'CAREER'
+    categoryLabel === 'ความรัก' ? 'LOVE' : categoryLabel === 'การเงิน' ? 'WEALTH' : 'CAREER'
     ];
 
   const filteredItems = recommendations
