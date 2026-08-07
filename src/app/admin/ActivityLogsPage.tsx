@@ -251,10 +251,10 @@ export default function ActivityLogsPage() {
       sortable: true,
       render: (val: string) => new Date(val).toLocaleString('th-TH'),
     },
-    {
+    /* {
       key: 'actions',
       label: 'Actions',
-      render: (_: unknown, log: ActivityLog) => (
+      render: (_: unknown, _log: ActivityLog) => (
         <button
           onClick={() => handleDelete(log.log_id, log.user_name || '', log.attraction_name || '')}
           className="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
@@ -262,7 +262,7 @@ export default function ActivityLogsPage() {
           Delete
         </button>
       ),
-    },
+    }, */
   ];
 
   const activeTodayCount = calculateActiveToday(logs);

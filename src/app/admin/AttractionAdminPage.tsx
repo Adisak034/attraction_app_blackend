@@ -530,21 +530,21 @@ export default function AttractionAdminPage() {
     { key: 'sacred_obj', label: 'Sacred Objects', render: (val: unknown) => formatTextSnippet(val as string | null) },
     { key: 'offering', label: 'Offering', render: (val: unknown) => formatTextSnippet(val as string | null) },
     { key: 'categories', label: 'Categories', sortable: false, render: (val: unknown) => (val as string) || '-' },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_: unknown, row: Attraction) => (
-        <div className="flex gap-2 justify-center">
-          {/* <button
-            type="button"
-            className="edit-attraction-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm"
-            data-attraction-id={row.attraction_id}
-          >
-            Edit
-          </button> */}
-        </div>
-      ),
-    },
+    // {
+    //   key: 'actions',
+    //   label: 'Actions',
+    //   render: (_: unknown, row: Attraction) => (
+    //     <div className="flex gap-2 justify-center">
+    //       {/* <button
+    //         type="button"
+    //         className="edit-attraction-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm"
+    //         data-attraction-id={row.attraction_id}
+    //       >
+    //         Edit
+    //       </button> */}
+    //     </div>
+    //   ),
+    // },
   ];
 
   return (

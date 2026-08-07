@@ -102,21 +102,21 @@ function UserRoleBadge({ role }: UserRoleBadgeProps) {
 
   if (normalizedRole === 'admin') {
     return (
-      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200">
+      <span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200">
         Admin
       </span>
     );
   }
   if (normalizedRole === 'user_model') {
     return (
-      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
+      <span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
         User Model
       </span>
     );
   }
   return (
-    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-      User
+    <span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+      {role || 'User'}
     </span>
   );
 }
@@ -192,7 +192,6 @@ function UserFormModal({ modalMode, formData, onInputChange, onSubmit, onClose }
             >
               <option value="user">User</option>
               <option value="admin">Admin</option>
-              <option value="user_model">User Model</option>
             </select>
           </div>
 
@@ -384,6 +383,7 @@ export default function UserAdminPage() {
       key: 'role',
       label: 'Role',
       sortable: true,
+      className: 'whitespace-nowrap',
       render: (val: unknown) => <UserRoleBadge role={val as string} />,
     },
     {
@@ -404,14 +404,14 @@ export default function UserAdminPage() {
           >
             Edit
           </button>
-          <button
+          {/* <button
             type="button"
             className="delete-user-btn bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-700 transition shadow-sm"
             data-user-id={row.user_id}
             data-user-name={row.user_name}
           >
             Delete
-          </button>
+          </button> */}
         </div>
       ),
     },

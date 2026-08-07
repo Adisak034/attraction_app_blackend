@@ -162,6 +162,7 @@ export default function App() {
 
   // Recommendations & View States
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [categoryOrder, setCategoryOrder] = useState<string[]>(['การงาน', 'โชคลาภ', 'ความรัก']);
   const [isNewUser, setIsNewUser] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -232,6 +233,7 @@ export default function App() {
       const apiRecommendations = (await apiGet(`/recommend/${id}`)) as {
         recommendations?: Recommendation[];
         is_new_user?: boolean;
+        category_order?: string[];
         error?: string;
       };
 
@@ -250,6 +252,10 @@ export default function App() {
 
       if (recs.length === 0) {
         setError('ไม่พบข้อมูลคำแนะนำจากระบบ');
+      }
+
+      if (Array.isArray(apiRecommendations?.category_order) && apiRecommendations.category_order.length > 0) {
+        setCategoryOrder(apiRecommendations.category_order);
       }
 
       setIsNewUser(Boolean(apiRecommendations?.is_new_user));
@@ -440,6 +446,7 @@ export default function App() {
 
                 <RecommendationList
                   recommendations={recommendations}
+                  categoryOrder={categoryOrder}
                   isNewUser={isNewUser}
                   error={error}
                   loading={loading}
@@ -467,6 +474,7 @@ export default function App() {
         {selectedPlace && (
           <PlaceDetailModal
             selectedPlace={selectedPlace}
+            categoryOrder={categoryOrder}
             isNewUser={isNewUser}
             onClose={() => setSelectedPlace(null)}
             onOpenMap={handleOpenGoogleMaps}
@@ -484,6 +492,9 @@ export default function App() {
               setShowRatingModal(false);
               setRatingTargetPlace(null);
               setNavHistoryRefreshCounter((prev) => prev + 1);
+              if (userId) {
+                void fetchRecommendations(userId);
+              }
             }}
           />
         )}

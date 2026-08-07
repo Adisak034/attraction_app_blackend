@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, LogIn, Sparkles } from 'lucide-react';
+import { ArrowRight, LogIn } from 'lucide-react';
 
 // =============================================================================
 // Types
@@ -54,13 +54,7 @@ function LandingHeroTitle() {
   return (
     <>
       <div className="mb-20 flex justify-center items-center gap-3">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
-          <Sparkles className="text-faith-gold" size={24} />
-        </motion.div>
         <span className="text-faith-gold font-black tracking-[0.3em] text-sm uppercase">Faith Nakonpathom</span>
-        <motion.div animate={{ rotate: -360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
-          <Sparkles className="text-faith-gold" size={24} />
-        </motion.div>
       </div>
 
       <motion.h1

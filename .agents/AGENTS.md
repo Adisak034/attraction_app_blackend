@@ -21,7 +21,7 @@
 - **OpenAPI Docs Maintenance:** OpenAPI Swagger documentation is available at `http://localhost:8000/docs#/`. Whenever backend endpoints are added or modified, always create or update Pydantic models in `backend/app/schemas/schemas.py` and attach them via `response_model` so that API documentation remains fully typed and up-to-date.
 
 ## Recommendation System (`backend/app/routers/recommendation.py`)
-- **Existing Users (เคยให้คะแนน):** Receive 100% Collaborative Filtering (CF) scoring loaded from Pickle (`.pkl`) models across categories (`work`, `finance`, `love`).
+- **Existing Users (เคยให้คะแนน):** Receive a blended score of 70% Collaborative Filtering (CF) and 30% Popularity (Bayesian Average) across categories (`work`, `finance`, `love`).
 - **New Users (ยังไม่เคยให้คะแนน):** Receive 100% Popularity scoring calculated from overall MySQL database ratings.
 
 ## Build and Test

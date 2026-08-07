@@ -71,6 +71,20 @@ function calculateDashboardStats(
   const total_ratings = ratings.length;
   const total_images = attractions.filter((a) => Boolean(a.attraction_image)).length;
 
+  // Map Thai category names to standardized English categories (Work, Finance, Love)
+  const CATEGORY_MAP: Record<string, string> = {
+    'การงาน': 'Work',
+    'การเงิน': 'Finance',
+    'โชคลาภ': 'Finance',
+    'ความรัก': 'Love',
+    'work': 'Work',
+    'finance': 'Finance',
+    'love': 'Love',
+    'Work': 'Work',
+    'Finance': 'Finance',
+    'Love': 'Love',
+  };
+
   // นับสถานที่ตามหมวดหมู่ (Split ด้วย comma)
   const categoryMap = new Map<string, number>();
   attractions.forEach((row) => {
@@ -85,7 +99,13 @@ function calculateDashboardStats(
       return;
     }
 
+    const mappedCategories = new Set<string>();
     parts.forEach((categoryName) => {
+      const mapped = CATEGORY_MAP[categoryName] || categoryName;
+      mappedCategories.add(mapped);
+    });
+
+    mappedCategories.forEach((categoryName) => {
       categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + 1);
     });
   });
@@ -182,7 +202,7 @@ function RatingDistributionCard({ stats }: RatingDistributionCardProps) {
           <div key={item.label}>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-700">{item.label}</span>
-              <span className={`text-sm font-semibold ${item.textColor}`}>{item.avg.toFixed(1)} ★</span>
+              <span className={`text-sm font-semibold ${item.textColor}`}>{item.avg.toFixed(2)} ★</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div

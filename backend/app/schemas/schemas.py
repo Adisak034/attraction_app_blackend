@@ -238,6 +238,7 @@ class RecommendationItem(BaseModel):
     name: str
     type: str
     category: str
+    target_category: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     score: float
@@ -250,4 +251,5 @@ class RecommendationResponse(BaseModel):
     user_id: str
     is_new_user: bool
     recommendations: List[RecommendationItem]
+    category_order: Optional[List[str]] = None
 

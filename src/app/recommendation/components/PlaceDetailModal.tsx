@@ -34,6 +34,7 @@ interface Recommendation {
 
 interface PlaceDetailModalProps {
   selectedPlace: Recommendation;
+  categoryOrder?: string[];
   isNewUser?: boolean;
   onClose: () => void;
   onOpenMap: (place: Recommendation) => void;
@@ -67,18 +68,33 @@ function DetailInfoCard({ icon, title, children }: DetailInfoCardProps) {
 
 export default function PlaceDetailModal({
   selectedPlace,
+  categoryOrder,
   isNewUser,
   onClose,
   onOpenMap,
 }: PlaceDetailModalProps) {
   const [brokenImageIds, setBrokenImageIds] = useState<Set<string>>(new Set());
 
-  const categoryChips = [
-    selectedPlace.type,
-    ...selectedPlace.category
+  const rawCategories = selectedPlace.category
+    ? selectedPlace.category
       .split(',')
       .map((item) => item.trim())
-      .filter(Boolean),
+      .filter((item) => Boolean(item) && item !== '-' && item !== 'None')
+    : [];
+
+  if (categoryOrder && categoryOrder.length > 0 && rawCategories.length > 0) {
+    rawCategories.sort((a, b) => {
+      const idxA = categoryOrder.indexOf(a);
+      const idxB = categoryOrder.indexOf(b);
+      const weightA = idxA === -1 ? 99 : idxA;
+      const weightB = idxB === -1 ? 99 : idxB;
+      return weightA - weightB;
+    });
+  }
+
+  const categoryChips = [
+    selectedPlace.type,
+    ...(rawCategories.length > 0 ? rawCategories : ['ไม่ระบุหมวดหมู่']),
   ].slice(0, 3);
 
   return (

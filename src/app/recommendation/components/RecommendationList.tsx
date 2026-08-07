@@ -21,6 +21,7 @@ export interface Recommendation {
   name: string;
   type: string;
   category: string;
+  target_category?: string;
   lat: number;
   lng: number;
   score: number;
@@ -138,7 +139,7 @@ function RecommendationCard({
             <Star size={12} className="text-faith-gold fill-faith-gold" />
           </div>
           <span className="text-sm font-bold text-gray-300 tracking-wider font-mono">
-            {item.score.toFixed(1)}{' '}
+            {item.score.toFixed(2)}{' '}
             {!isNewUser && (
               <span className="text-gray-500 font-sans tracking-normal font-medium text-xs ml-1">
                 (คะแนนความเข้ากัน)
@@ -168,7 +169,7 @@ function RecommendationCard({
 // =============================================================================
 
 interface CategorySectionProps {
-  categoryLabel: 'ความรัก' | 'การเงิน' | 'การงาน';
+  categoryLabel: string;
   recommendations: Recommendation[];
   isNewUser: boolean;
   brokenImageIds: Set<string>;
@@ -184,13 +185,31 @@ function CategorySection({
   onImageError,
   onSelectPlace,
 }: CategorySectionProps) {
-  const aliases =
-    CATEGORY_FILTER_ALIASES[
-    categoryLabel === 'ความรัก' ? 'LOVE' : categoryLabel === 'การเงิน' ? 'WEALTH' : 'CAREER'
-    ];
-
+  const seenIds = new Set<string>();
   const filteredItems = recommendations
-    .filter((item) => aliases.some((label) => item.category.includes(label)))
+    .filter((item) => {
+      if (seenIds.has(item.id)) return false;
+
+      let matches = false;
+      if (item.target_category) {
+        matches =
+          item.target_category === categoryLabel ||
+          ((categoryLabel === 'โชคลาภ' || categoryLabel === 'การเงิน') &&
+            (item.target_category === 'โชคลาภ' || item.target_category === 'การเงิน'));
+      } else {
+        const cats = item.category.split(',').map((s) => s.trim());
+        matches =
+          cats.includes(categoryLabel) ||
+          ((categoryLabel === 'โชคลาภ' || categoryLabel === 'การเงิน') && (cats.includes('โชคลาภ') || cats.includes('การเงิน'))) ||
+          item.category.includes(categoryLabel);
+      }
+
+      if (matches) {
+        seenIds.add(item.id);
+        return true;
+      }
+      return false;
+    })
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 
@@ -199,9 +218,9 @@ function CategorySection({
   return (
     <div className="w-full mb-12">
       <h4 className="text-2xl md:text-3xl font-black text-faith-gold mb-6 uppercase tracking-tight flex items-center gap-3">
-        {categoryLabel === 'ความรัก' && <Heart size={32} className="text-faith-gold fill-faith-gold" />}
-        {categoryLabel === 'การเงิน' && <Coins size={32} className="text-faith-gold" />}
-        {categoryLabel === 'การงาน' && <Briefcase size={32} className="text-faith-gold" />}
+        {categoryLabel.includes('ความรัก') && <Heart size={32} className="text-faith-gold fill-faith-gold" />}
+        {(categoryLabel.includes('โชคลาภ') || categoryLabel.includes('การเงิน')) && <Coins size={32} className="text-faith-gold" />}
+        {categoryLabel.includes('การงาน') && <Briefcase size={32} className="text-faith-gold" />}
         <span>{categoryLabel}</span>
       </h4>
 
@@ -228,6 +247,7 @@ function CategorySection({
 
 interface RecommendationListProps {
   recommendations: Recommendation[];
+  categoryOrder?: string[];
   isNewUser: boolean;
   error: string;
   loading: boolean;
@@ -239,6 +259,7 @@ interface RecommendationListProps {
 
 export default function RecommendationList({
   recommendations,
+  categoryOrder = ['การงาน', 'โชคลาภ', 'ความรัก'],
   isNewUser,
   error,
   loading,
@@ -251,11 +272,24 @@ export default function RecommendationList({
     return <ErrorStateBox error={error} loading={loading} onRetry={onRetry} />;
   }
 
-  const categories = ['ความรัก', 'การเงิน', 'การงาน'] as const;
+  // กำหนดลำดับการแสดงผลหมวดหมู่ตามลำดับที่ต้องการเสมอ: การงาน -> โชคลาภ -> ความรัก
+  const PREFERRED_ORDER = ['การงาน', 'โชคลาภ', 'ความรัก'];
+
+  const sortCategories = (cats: string[]): string[] => {
+    return [...cats].sort((a, b) => {
+      const idxA = PREFERRED_ORDER.findIndex((p) => a.includes(p) || (p === 'โชคลาภ' && a === 'การเงิน'));
+      const idxB = PREFERRED_ORDER.findIndex((p) => b.includes(p) || (p === 'โชคลาภ' && b === 'การเงิน'));
+      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+    });
+  };
+
+  const activeCategories = categoryOrder && categoryOrder.length > 0
+    ? sortCategories(categoryOrder)
+    : PREFERRED_ORDER;
 
   return (
     <>
-      {categories.map((catLabel) => (
+      {activeCategories.map((catLabel) => (
         <CategorySection
           key={catLabel}
           categoryLabel={catLabel}
