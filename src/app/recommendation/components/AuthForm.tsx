@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, Lock, LogIn, User } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, Lock, User } from 'lucide-react';
 
 // =============================================================================
 // Types & Interfaces
@@ -51,11 +51,7 @@ interface AuthFormHeaderProps {
 
 function AuthFormHeader({ isRegister }: AuthFormHeaderProps) {
   return (
-    <div className="text-center mb-8 sm:mb-7">
-      <div className="w-16 h-16 sm:w-14 sm:h-14 bg-faith-gold rounded-2xl flex items-center justify-center mx-auto mb-6 sm:mb-5 shadow-2xl shadow-amber-500/30 text-[#1A0404]">
-        {isRegister ? <User size={32} className="sm:hidden" /> : <LogIn size={32} className="sm:hidden" />}
-        {isRegister ? <User size={26} className="hidden sm:block" /> : <LogIn size={26} className="hidden sm:block" />}
-      </div>
+    <div className="text-center pt-2 sm:pt-10 mb-6 sm:mb-7">
       <h2 className="text-2xl font-black mb-2 gold-gradient-text uppercase tracking-tight">
         {isRegister ? 'ลงทะเบียน' : 'ยินดีต้อนรับกลับมา'}
       </h2>
@@ -96,9 +92,8 @@ function AuthInputField({
           type={type}
           required={required}
           placeholder={placeholder}
-          className={`w-full text-xs sm:text-sm bg-black/40 border border-white/10 rounded-xl sm:rounded-2xl py-3 sm:py-4 pl-12 sm:pl-14 focus:border-faith-gold transition-all outline-none backdrop-blur-xl ${
-            rightAction ? 'pr-20 sm:pr-24' : 'pr-4 sm:pr-6'
-          }`}
+          className={`w-full text-xs sm:text-sm bg-black/40 border border-white/10 rounded-xl sm:rounded-2xl py-3 sm:py-4 pl-12 sm:pl-14 focus:border-faith-gold transition-all outline-none backdrop-blur-xl ${rightAction ? 'pr-20 sm:pr-24' : 'pr-4 sm:pr-6'
+            }`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -179,7 +174,7 @@ export default function AuthForm({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 1.1 }}
-      className="w-full h-full px-4 relative z-10 min-h-screen flex flex-col justify-center items-center"
+      className="w-full h-full px-4 relative z-10 min-h-screen flex flex-col justify-center items-center py-6 sm:py-10 my-auto"
     >
       <div className="glass-card rounded-2xl sm:rounded-[3rem] p-6 sm:px-10 sm:py-7 border border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-lg sm:max-w-xl">
         {/* Header Section */}
@@ -223,9 +218,8 @@ export default function AuthForm({
             onClick={() => setRememberMe(!rememberMe)}
           >
             <div
-              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                rememberMe ? 'bg-faith-gold border-faith-gold' : 'border-white/20'
-              }`}
+              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-faith-gold border-faith-gold' : 'border-white/20'
+                }`}
             >
               {rememberMe && <CheckCircle2 size={14} className="sm:size-4 text-black" />}
             </div>

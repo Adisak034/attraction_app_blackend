@@ -35,6 +35,7 @@ interface Rating {
   rating_love: number;
   created_at: string;
   user_name: string;
+  role?: string;
   attraction_name: string;
 }
 
@@ -182,7 +183,11 @@ export default function RatingAdminPage() {
     try {
       setLoading(true);
       const data = await apiGet('/api/rating');
-      setRatings(data as Rating[]);
+      const allRatings = data as Rating[];
+      const filtered = allRatings.filter(
+        (r) => r.role?.toLowerCase().replace(/[\s_-]/g, '') !== 'usermodel'
+      );
+      setRatings(filtered);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {

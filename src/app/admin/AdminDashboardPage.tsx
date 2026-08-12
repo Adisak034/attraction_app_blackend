@@ -48,11 +48,18 @@ interface AttractionRow {
   categories?: string | null;
 }
 
+interface UserRow {
+  user_id: number;
+  user_name?: string;
+  role?: string;
+}
+
 interface RatingRow {
   rating_id: number;
   rating_work?: number;
   rating_finance?: number;
   rating_love?: number;
+  role?: string;
 }
 
 
@@ -329,8 +336,14 @@ export default function AdminPage() {
         ]);
 
         const attractions = Array.isArray(attractionsRaw) ? (attractionsRaw as AttractionRow[]) : [];
-        const users = Array.isArray(usersRaw) ? (usersRaw as unknown[]) : [];
-        const ratings = Array.isArray(ratingsRaw) ? (ratingsRaw as RatingRow[]) : [];
+        const rawUsers = Array.isArray(usersRaw) ? (usersRaw as UserRow[]) : [];
+        const users = rawUsers.filter(
+          (u) => u.role?.toLowerCase().replace(/[\s_-]/g, '') !== 'usermodel'
+        );
+        const rawRatings = Array.isArray(ratingsRaw) ? (ratingsRaw as RatingRow[]) : [];
+        const ratings = rawRatings.filter(
+          (r) => r.role?.toLowerCase().replace(/[\s_-]/g, '') !== 'usermodel'
+        );
 
         const { stats: calculatedStats, categoryStats: calculatedCategoryStats } = calculateDashboardStats(
           attractions,

@@ -154,7 +154,7 @@ class RatingBase(BaseModel):
     user_id: int                            # ID ผู้ใช้ที่ให้คะแนน
     attraction_id: int                      # ID สถานที่ที่ถูกให้คะแนน
     rating_work: Optional[int] = 0          # คะแนนด้านการงาน (0-5)
-    rating_finance: Optional[int] = 0       # คะแนนด้านการเงิน/โชคลาภ (0-5)
+    rating_finance: Optional[int] = 0       # คะแนนด้านการเงิน (0-5)
     rating_love: Optional[int] = 0          # คะแนนด้านความรัก (0-5)
 
 class RatingCreate(RatingBase):
@@ -169,6 +169,7 @@ class RatingDetailResponse(RatingResponse):
     """Schema สำหรับส่งข้อมูลคะแนนรีวิวพร้อมรายละเอียดชื่อ"""
     created_at: Optional[Any] = None
     user_name: Optional[str] = None
+    role: Optional[str] = None
     attraction_name: Optional[str] = None
 
 # ===== Schemas สำหรับตารางข้อมูลอ้างอิง (Lookup Tables) =====
@@ -206,6 +207,7 @@ class ActivityLogResponse(BaseModel):
     log_id: int
     user_id: int
     user_name: Optional[str] = None
+    role: Optional[str] = None
     attraction_id: int
     attraction_name: Optional[str] = None
     action_type: str

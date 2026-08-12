@@ -247,7 +247,11 @@ export default function UserAdminPage() {
     try {
       setLoading(true);
       const data = await apiGet('/api/users');
-      setUsers(data as User[]);
+      const allUsers = data as User[];
+      const filtered = allUsers.filter(
+        (u) => u.role?.toLowerCase().replace(/[\s_-]/g, '') !== 'usermodel'
+      );
+      setUsers(filtered);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
@@ -434,12 +438,12 @@ export default function UserAdminPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
+          {/* <button
             onClick={() => exportUsersToCsv(users)}
             className="bg-emerald-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-emerald-700 font-semibold text-sm transition"
           >
             Export to CSV
-          </button>
+          </button> */}
           <button
             onClick={() => {
               setModalMode('add');

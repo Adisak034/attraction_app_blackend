@@ -58,17 +58,10 @@ function ResultsNavBar({ userName, isAdmin, onNavigateAdmin, onStepChange, onLog
   return (
     <nav className="flex justify-between items-center px-6 md:px-12 py-6 absolute w-full z-50">
       <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onStepChange('selection')}>
-        <motion.div
-          whileHover={{ rotate: 180 }}
-          className="p-2 bg-faith-gold rounded-lg shadow-[0_0_20px_rgba(212,175,55,0.4)]"
-        >
-          <Compass className="text-[#1A0404]" size={20} />
-        </motion.div>
         <div className="flex flex-col">
           <span className="text-xl font-black gold-gradient-text tracking-tighter uppercase leading-none">
             Faith Nakonpathom
           </span>
-          <span className="text-[8px] text-gray-400 tracking-widest uppercase">ผู้นำทางจิตวิญญาณ</span>
         </div>
       </div>
 
@@ -162,7 +155,7 @@ export default function App() {
 
   // Recommendations & View States
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [categoryOrder, setCategoryOrder] = useState<string[]>(['การงาน', 'โชคลาภ', 'ความรัก']);
+  const [categoryOrder, setCategoryOrder] = useState<string[]>(['การงาน', 'การเงิน', 'ความรัก']);
   const [isNewUser, setIsNewUser] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -354,6 +347,12 @@ export default function App() {
         localStorage.removeItem('faith_userId');
         localStorage.removeItem('faith_userName');
       }
+
+      if (result.role === 'admin') {
+        navigate('/admin');
+        return;
+      }
+
       void fetchRecommendations(uId);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -389,11 +388,58 @@ export default function App() {
     window.open(mapUrl, '_blank', 'noopener,noreferrer');
   };
 
+  const handleSelectAttractionById = async (attractionId: number | string) => {
+    try {
+      const existing = recommendations.find((r) => String(r.id) === String(attractionId));
+      if (existing) {
+        setSelectedPlace(existing);
+        return;
+      }
+      const data = (await apiGet(`/api/attraction/${attractionId}`)) as {
+        attraction_id: number;
+        attraction_name: string;
+        type_id?: number;
+        district_id?: number;
+        sect_id?: number;
+        lat?: number;
+        lng?: number;
+        sacred_obj?: string;
+        offering?: string;
+        attraction_image?: string;
+        categories?: Array<{ category_id?: number; category_name?: string }> | string;
+      };
+      if (data) {
+        let categoryStr = '';
+        if (Array.isArray(data.categories)) {
+          categoryStr = data.categories
+            .map((c: any) => c.category_name || (c.category_id ? `หมวดหมู่ ${c.category_id}` : ''))
+            .filter(Boolean)
+            .join(', ');
+        } else if (typeof data.categories === 'string') {
+          categoryStr = data.categories;
+        }
+
+        const place: Recommendation = {
+          id: String(data.attraction_id),
+          name: data.attraction_name,
+          type: 'สถานที่ศักดิ์สิทธิ์',
+          category: categoryStr || 'สถานที่ศักดิ์สิทธิ์',
+          lat: Number(data.lat) || 13.8196,
+          lng: Number(data.lng) || 100.0601,
+          score: 5.0,
+          image: resolveImageUrl(data.attraction_image) || undefined,
+          sacred_object: data.sacred_obj || undefined,
+          offerings: data.offering || undefined,
+        };
+        setSelectedPlace(place);
+      }
+    } catch (err) {
+      console.error('Failed to load attraction details:', err);
+    }
+  };
+
   return (
-    <div
-      className={`min-h-screen flex flex-col text-white selection:bg-faith-gold/30 font-outfit overflow-x-hidden ${step === 'register' || step === 'login' ? 'overflow-y-hidden' : ''
-        }`}
-    >
+    <div className="min-h-screen flex flex-col text-white selection:bg-faith-gold/30 font-outfit overflow-x-hidden">
       <DivineBackground currentBgIndex={currentBg} backgrounds={backgrounds} />
 
       <div className="flex-1">
@@ -491,6 +537,8 @@ export default function App() {
             onSubmit={() => {
               setShowRatingModal(false);
               setRatingTargetPlace(null);
+              setSelectedPlace(null);
+              setStep('results');
               setNavHistoryRefreshCounter((prev) => prev + 1);
               if (userId) {
                 void fetchRecommendations(userId);
@@ -502,7 +550,12 @@ export default function App() {
 
       <AnimatePresence mode="wait">
         {step === 'review' && (
-          <RatingHistory userId={userId} userName={userName} onBack={() => setStep('results')} />
+          <RatingHistory
+            userId={userId}
+            userName={userName}
+            onBack={() => setStep('results')}
+            onSelectPlace={handleSelectAttractionById}
+          />
         )}
       </AnimatePresence>
 
@@ -519,6 +572,7 @@ export default function App() {
             userName={userName}
             refreshTrigger={navHistoryRefreshCounter}
             onBack={() => setStep('results')}
+            onSelectPlace={handleSelectAttractionById}
             onRatePlace={(id: string, name: string) => {
               setRatingTargetPlace({ id, name } as unknown as Recommendation);
               setShowRatingModal(true);

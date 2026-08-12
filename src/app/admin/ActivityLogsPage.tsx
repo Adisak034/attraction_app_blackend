@@ -27,6 +27,7 @@ interface ActivityLog {
   log_id: number;
   user_id: number;
   user_name: string | null;
+  role?: string | null;
   attraction_id: number | null;
   attraction_name: string | null;
   action_type: string;
@@ -188,7 +189,11 @@ export default function ActivityLogsPage() {
         apiGet('/api/activity-logs'),
         apiGet('/api/activity-logs/stats'),
       ]);
-      setLogs(logsRes as ActivityLog[]);
+      const rawLogs = logsRes as ActivityLog[];
+      const filtered = rawLogs.filter(
+        (l) => l.role?.toLowerCase().replace(/[\s_-]/g, '') !== 'usermodel'
+      );
+      setLogs(filtered);
       setStats(statsRes as Stats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -282,12 +287,12 @@ export default function ActivityLogsPage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Activity Logs</h1>
         </div>
-        <button
+        {/* <button
           onClick={() => exportLogsToCsv(logs)}
           className="bg-emerald-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-emerald-700 font-semibold transition"
         >
           Export to CSV
-        </button>
+        </button> */}
       </div>
 
       {/* Statistics Grid */}

@@ -14,6 +14,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, MapPin, Sparkles, Star, X } from 'lucide-react';
+import { resolveImageUrl } from '@/lib/apiClient';
 
 // =============================================================================
 // Types
@@ -38,6 +39,15 @@ interface PlaceDetailModalProps {
   isNewUser?: boolean;
   onClose: () => void;
   onOpenMap: (place: Recommendation) => void;
+}
+
+function formatDetailText(val?: string | null): string {
+  if (!val) return 'ไม่มีข้อมูล';
+  const trimmed = val.trim();
+  if (!trimmed || trimmed === '-' || trimmed === 'None' || trimmed === 'null' || trimmed === 'ไม่ระบุข้อมูล' || trimmed === 'ไม่ระบุ') {
+    return 'ไม่มีข้อมูล';
+  }
+  return trimmed;
 }
 
 // =============================================================================
@@ -93,8 +103,8 @@ export default function PlaceDetailModal({
   }
 
   const categoryChips = [
-    selectedPlace.type,
-    ...(rawCategories.length > 0 ? rawCategories : ['ไม่ระบุหมวดหมู่']),
+    formatDetailText(selectedPlace.type),
+    ...(rawCategories.length > 0 ? rawCategories : ['ไม่มีข้อมูล']),
   ].slice(0, 3);
 
   return (
@@ -102,7 +112,7 @@ export default function PlaceDetailModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -125,7 +135,7 @@ export default function PlaceDetailModal({
         <div className="relative h-44 sm:h-52">
           {selectedPlace.image && !brokenImageIds.has(selectedPlace.id) ? (
             <img
-              src={selectedPlace.image}
+              src={resolveImageUrl(selectedPlace.image)}
               alt={selectedPlace.name}
               className="w-full h-full object-cover"
               onError={() => {
@@ -175,11 +185,11 @@ export default function PlaceDetailModal({
           </div>
 
           <DetailInfoCard icon={<Sparkles size={18} />} title="สิ่งศักดิ์สิทธิ์">
-            {selectedPlace.sacred_object || 'ไม่ระบุข้อมูล'}
+            {formatDetailText(selectedPlace.sacred_object)}
           </DetailInfoCard>
 
           <DetailInfoCard icon={<Heart size={18} />} title="ของไหว้">
-            {selectedPlace.offerings || 'ไม่ระบุข้อมูล'}
+            {formatDetailText(selectedPlace.offerings)}
           </DetailInfoCard>
 
           {/* Google Maps Preview Embed Box (locked pointer events) */}

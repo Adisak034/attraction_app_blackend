@@ -4,15 +4,23 @@
 # Endpoints:
 #   GET  /api/recommend/{user_id}       → แนะนำสถานที่สำหรับผู้ใช้
 #
-# หลักการแนะนำ:
+# หลักการแนะนำ (ตาม main (1).py):
 #   - ผู้ใช้เก่า (เคยให้คะแนน) → Blend CF 70% + Popularity 30%
-#   - ผู้ใช้ใหม่ (ยังไม่เคยให้คะแนน) → Popularity (Bayesian Average) จากฐานข้อมูล MySQL 100%
+#     (Popularity = sum(axis=0) จาก user-item matrix)
+#   - ผู้ใช้ใหม่ (ยังไม่เคยให้คะแนน) → Popularity 100%
+#   - Real-time model recalculation หลังให้คะแนน (ไม่ save .pkl)
+#   - Global score normalization (max = 5.0)
+#   - กรองสถานที่ตาม category_name ใน DB
 # =============================================================================
 
 import math
 import os
 import pickle
 from typing import Dict, Any, Tuple, List, Set
+
+import pandas as pd
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 
 from fastapi import APIRouter, HTTPException
 
@@ -24,15 +32,23 @@ router = APIRouter(tags=["recommendation"])
 # หมวดหมู่โมเดล (key ภาษาอังกฤษ → label ภาษาไทย)
 MODEL_CATEGORIES = {
     "work": "การงาน",
-    "finance": "โชคลาภ",
+    "finance": "การเงิน",
     "love": "ความรัก",
 }
 
 # Alias ชื่อหมวดหมู่ภาษาไทยที่อาจปรากฏใน DB (ใช้กรองสถานที่ให้ตรงหมวด)
 CATEGORY_ALIASES = {
     "work": ["การงาน"],
-    "finance": ["การเงิน", "โชคลาภ"],
+    "finance": ["การเงิน"],
     "love": ["ความรัก"],
+}
+
+# Mapping column names ใน DB → model key
+# ตาราง rating ใน DB ใช้ rating_work, rating_finance, rating_love
+DB_COLUMN_MAP = {
+    "work": "rating_work",
+    "finance": "rating_finance",
+    "love": "rating_love",
 }
 
 # เก็บโมเดลไว้ใน memory แยกตามหมวดหมู่
@@ -99,6 +115,7 @@ def _load_models_once(force: bool = False):
                 models[category]["user_similarity"] = data.get("user_similarity_df")
                 models[category]["user_item_matrix"] = data.get("user_item_matrix")
                 loaded = True
+                print(f"Model loaded from {path}")
                 break
             except Exception:
                 continue
@@ -109,6 +126,52 @@ def _load_models_once(force: bool = False):
 
     _models_loaded = True
 
+
+# ---------------------------------------------------------------------------
+# Real-time model recalculation (ตาม main (1).py)
+# ---------------------------------------------------------------------------
+
+def recalculate_model_in_memory(category: str, connection) -> None:
+    """คำนวณ cosine similarity ใหม่ทันทีหลังให้คะแนน (ไม่ save .pkl)
+
+    อ่าน rating จากตาราง `rating` → สร้าง user-item matrix → cosine similarity
+    แล้วอัปเดต models[category] ใน memory ทันที
+
+    Args:
+        category: หมวดหมู่ที่ต้องการ recalculate ("work" / "finance" / "love")
+        connection: MySQL connection object (ยังเปิดอยู่)
+    """
+    global models
+
+    db_column = DB_COLUMN_MAP[category]
+    query = f"SELECT user_id, attraction_id, {db_column} FROM rating WHERE {db_column} > 0"
+
+    try:
+        df_cat = pd.read_sql(query, connection)
+    except Exception as e:
+        print(f"Warning: Could not read ratings for {category}: {e}")
+        return
+
+    if df_cat.empty:
+        return  # ยังไม่มี rating ในหมวดนี้
+
+    # สร้าง User-Item Matrix
+    matrix = df_cat.pivot_table(
+        index="user_id",
+        columns="attraction_id",
+        values=db_column,
+        fill_value=0,
+    )
+
+    # คำนวณ Cosine Similarity
+    user_sim = cosine_similarity(matrix)
+    user_sim_df = pd.DataFrame(user_sim, index=matrix.index, columns=matrix.index)
+
+    # อัปเดต in-memory models ทันที
+    models[category]["user_similarity"] = user_sim_df
+    models[category]["user_item_matrix"] = matrix
+
+    print(f"DEBUG: Real-time update {category} model (Users: {len(matrix.index)}, Items: {len(matrix.columns)})")
 
 
 # ---------------------------------------------------------------------------
@@ -130,120 +193,6 @@ def _to_int(value: Any):
         return int(str(value).strip()) if value is not None else None
     except Exception:
         return None
-
-
-# ---------------------------------------------------------------------------
-# Scoring helpers
-# ---------------------------------------------------------------------------
-
-def _compute_bayesian_scores(
-    sums: Dict[str, Dict[int, float]],
-    counts: Dict[str, Dict[int, int]],
-    min_reviews: int = 3,
-) -> Dict[str, Dict[int, float]]:
-    """คำนวณ Popularity ด้วย Bayesian Average แยกตามหมวดหมู่
-
-    สูตร: (n / (n + m)) × avg_rating + (m / (n + m)) × C
-        n = จำนวนรีวิวของสถานที่นี้
-        m = จำนวนรีวิวขั้นต่ำ (ค่าเริ่มต้น = 3)
-        C = คะแนนเฉลี่ยรวมทั้งระบบ (global mean)
-
-    ข้อดี: สถานที่ที่มีรีวิว 1 คนให้ 5 ดาวจะไม่ชนะสถานที่ที่มีรีวิว 50 คนเฉลี่ย 4.5
-    """
-    scores: Dict[str, Dict[int, float]] = {}
-
-    for cat in MODEL_CATEGORIES:
-        # คำนวณ global mean (C) สำหรับหมวดนี้
-        total_sum = sum(sums[cat].values())
-        total_count = sum(counts[cat].values())
-        global_mean = total_sum / total_count if total_count > 0 else 2.5
-
-        scores[cat] = {}
-        for aid, rating_sum in sums[cat].items():
-            n = counts[cat].get(aid, 0)
-            if n <= 0:
-                continue
-            avg_rating = rating_sum / n
-            m = min_reviews
-            # Bayesian Average
-            bayesian_score = (n / (n + m)) * avg_rating + (m / (n + m)) * global_mean
-            scores[cat][aid] = bayesian_score
-
-    return scores
-
-
-def _filter_cf_by_category(
-    cf_scores: Dict[int, float],
-    category_key: str,
-    attraction_map: Dict[int, Dict[str, Any]],
-) -> Dict[int, float]:
-    """กรอง CF scores ให้เหลือเฉพาะสถานที่ที่มีหมวดหมู่ตรงกับหมวดที่กำลังประมวลผล
-
-    ป้องกันการแนะนำสถานที่ข้ามหมวดหมู่ เช่น สถานที่ด้านความรักไปอยู่ใน tab การงาน
-    """
-    target_aliases = CATEGORY_ALIASES.get(category_key, [])
-    if not target_aliases:
-        return cf_scores
-
-    filtered: Dict[int, float] = {}
-    for aid, score in cf_scores.items():
-        row = attraction_map.get(aid)
-        if not row:
-            continue
-        db_categories = str(row.get("categories") or "").strip()
-        # เก็บเฉพาะสถานที่ที่มีหมวดหมู่ตรงกัน
-        if db_categories and db_categories != "None" and any(alias in db_categories for alias in target_aliases):
-            filtered[aid] = score
-
-    return filtered
-
-def _compute_cf_scores(category: str, user_id: int, visited_ids: Set[int]) -> Dict[int, float]:
-    """คำนวณคะแนน Collaborative Filtering (CF) สำหรับผู้ใช้
-
-    ใช้ user similarity และ rating ของผู้ใช้ที่คล้ายกัน (สูงสุด 5 คน)
-    เพื่อประมาณว่าผู้ใช้นี้น่าจะชอบสถานที่ใด
-
-    Returns:
-        dict[attraction_id → CF score]  (ว่างถ้าโมเดลยังไม่โหลด หรือผู้ใช้ไม่อยู่ในโมเดล)
-    """
-    user_similarity = models[category]["user_similarity"]
-    user_item_matrix = models[category]["user_item_matrix"]
-
-    if user_similarity is None or user_item_matrix is None:
-        return {}
-
-    try:
-        if user_id not in user_item_matrix.index:
-            return {}
-
-        similar_users = user_similarity.loc[user_id].sort_values(ascending=False)
-        cf_scores: Dict[int, float] = {}
-
-        neighbors_used = 0
-        for similar_user, similarity_score in similar_users.items():
-            if _to_int(similar_user) == user_id:
-                continue  # ข้ามตัวเอง
-
-            neighbors_used += 1
-            if neighbors_used > 5:
-                break  # ใช้แค่ 5 คนที่คล้ายที่สุด
-
-            similarity = _safe_float(similarity_score)
-            for attraction_key, rating_value in user_item_matrix.loc[similar_user].items():
-                attraction_id = _to_int(attraction_key)
-                rating = _safe_float(rating_value)
-
-                if attraction_id is None or attraction_id in visited_ids:
-                    continue
-                if rating <= 0 or similarity <= 0:
-                    continue
-
-                # สะสมคะแนน = rating × similarity
-                cf_scores[attraction_id] = cf_scores.get(attraction_id, 0.0) + (rating * similarity)
-
-        return cf_scores
-    except Exception:
-        return {}
 
 
 # ---------------------------------------------------------------------------
@@ -278,164 +227,136 @@ def _fetch_attractions_map(cursor) -> Dict[int, Dict[str, Any]]:
     return {int(row["attraction_id"]): row for row in cursor.fetchall()}
 
 
-def _fetch_ratings_and_popularity(
-    cursor, user_id: int
-) -> Tuple[Dict[str, Dict[int, float]], Set[int]]:
-    """ดึงข้อมูล rating ทั้งหมด เพื่อคำนวณ Popularity (คะแนนเฉลี่ย) และหาสถานที่ที่ผู้ใช้เคยไป/เคยให้คะแนนแล้ว
-
-    Returns:
-        popularity_scores: dict[category → dict[attraction_id → คะแนนเฉลี่ย]]
-        user_visited_ids:  set ของ attraction_id ที่ผู้ใช้นี้เคยให้คะแนนแล้ว (จาก rating และ activity_log)
-    """
-    cursor.execute("SELECT user_id, attraction_id, rating_work, rating_finance, rating_love FROM rating")
-    ratings = cursor.fetchall()
-
-    popularity_sums: Dict[str, Dict[int, float]] = {cat: {} for cat in MODEL_CATEGORIES}
-    popularity_counts: Dict[str, Dict[int, int]] = {cat: {} for cat in MODEL_CATEGORIES}
-    user_visited_ids: Set[int] = set()
-
-    for row in ratings:
-        attraction_id = _to_int(row.get("attraction_id"))
-        if attraction_id is None:
-            continue
-
-        scores_by_category = {
-            "work":    _safe_float(row.get("rating_work")),
-            "finance": _safe_float(row.get("rating_finance")),
-            "love":    _safe_float(row.get("rating_love")),
-        }
-
-        # สะสม Popularity score และนับจำนวนรีวิวในแต่ละหมวดหมู่
-        for cat, score in scores_by_category.items():
-            if score > 0:
-                popularity_sums[cat][attraction_id] = popularity_sums[cat].get(attraction_id, 0.0) + score
-                popularity_counts[cat][attraction_id] = popularity_counts[cat].get(attraction_id, 0) + 1
-
-        # ถ้าเป็น rating ของผู้ใช้ปัจจุบัน และมีคะแนนอย่างน้อยหนึ่งด้าน → ถือว่าเคยไป/เคยให้คะแนนแล้ว
-        if _to_int(row.get("user_id")) == user_id and any(s > 0 for s in scores_by_category.values()):
-            user_visited_ids.add(attraction_id)
-
-    # คำนวณคะแนน Bayesian Average แทน Simple Average
-    # สูตร: (n / (n + m)) × avg + (m / (n + m)) × C
-    # n = จำนวนรีวิว, m = รีวิวขั้นต่ำ, C = ค่าเฉลี่ยรวมทั้งระบบ
-    popularity_scores = _compute_bayesian_scores(popularity_sums, popularity_counts)
-
-    # ดึงสถานที่ที่ผู้ใช้นี้เคยให้คะแนน (action_type = 'rate') จาก activity_log เพิ่มเติม
-    cursor.execute(
-        "SELECT DISTINCT attraction_id FROM activity_log WHERE user_id = %s AND action_type = 'rate'",
-        (user_id,)
-    )
-    rated_activity_rows = cursor.fetchall()
-    for row in rated_activity_rows:
-        aid = _to_int(row.get("attraction_id"))
-        if aid is not None:
-            user_visited_ids.add(aid)
-
-    return popularity_scores, user_visited_ids
-
-
 # ---------------------------------------------------------------------------
-# Recommendation builder
+# Recommendation builder (Per-category Isolated Calculation & Normalization)
 # ---------------------------------------------------------------------------
 
-def _generate_category_entries(
-    category_key: str,
-    category_label: str,
-    popularity_scores: Dict[int, float],
-    cf_scores: Dict[int, float],
-    attraction_map: Dict[int, Dict[str, Any]],
-    visited_ids: Set[int] = None,
-    limit: int = 100,
-) -> Tuple[List[Dict[str, Any]], bool]:
-    """สร้างรายการคำแนะนำสำหรับหมวดหมู่เดียว (จำกัดตาม limit เช่น 100 อันดับแรก)
+def _compute_category_scores(
+    user_id: int,
+    item_matrix: Any,
+    sim_matrix: Any
+) -> Dict[int, float]:
+    """คำนวณคะแนนแนะนำสำหรับหมวดหมู่เดี่ยว (CF 70% + Pop 30% หรือ Pop 100%)"""
+    if item_matrix is None or sim_matrix is None:
+        return {}
 
-    - ผู้ใช้เก่า (cf_scores มีคะแนน > 0) → Blend CF 70% + Popularity 30%
-    - ผู้ใช้ใหม่ (cf_scores ว่าง)          → ใช้ Popularity (Bayesian Average) 100%
-    - กรองสถานที่ที่อยู่ใน visited_ids (เคยให้คะแนนแล้ว) ออกเสมอ
-    - กรองให้เฉพาะสถานที่ที่มีหมวดหมู่ตรงกับหมวดที่กำลังประมวลผล
+    # Popularity baseline: sum(axis=0) ต่อ item ในหมวดหมู่นี้
+    col_sums = item_matrix.sum(axis=0)
+    pop_scores = {
+        int(col): float(col_sums[col])
+        for col in item_matrix.columns
+        if float(col_sums[col]) > 0
+    }
 
-    Returns:
-        entries:          รายการแนะนำตามจำนวน limit (สูงสุด 100 รายการ)
-        is_existing_user: True ถ้าเป็นผู้ใช้เก่า (มีข้อมูลใน CF model)
-    """
-    if visited_ids is None:
-        visited_ids = set()
+    # ตรวจสอบว่าผู้ใช้เคยให้คะแนนในหมวดหมู่นี้หรือไม่
+    user_has_rated = user_id in item_matrix.index
+
+    if not user_has_rated:
+        # ผู้ใช้ยังไม่เคยให้คะแนนในหมวดนี้ → ใช้ Popularity 100%
+        return pop_scores
+
+    # สถานที่ที่ผู้ใช้เคยให้คะแนนแล้วในหมวดหมู่นี้
+    user_ratings = item_matrix.loc[user_id]
+    visited_in_cat = set(user_ratings[user_ratings > 0].index.tolist())
+
+    # Collaborative Filtering (หา 5 คนที่คล้ายที่สุด ข้ามตัวเอง)
+    cf_scores: Dict[int, float] = {}
+    similar_users = sim_matrix[user_id].sort_values(ascending=False)[1:6]
+
+    for sim_user, sim_score in similar_users.items():
+        their_ratings = item_matrix.loc[sim_user]
+        for place_id, rating in their_ratings.items():
+            place_id_int = int(place_id)
+            if float(rating) > 0 and place_id_int not in visited_in_cat:
+                cf_scores[place_id_int] = cf_scores.get(place_id_int, 0.0) + float(rating) * float(sim_score)
 
     max_cf = max(cf_scores.values(), default=0.0)
-    is_existing_user = max_cf > 0
+    if max_cf >= 0.5:
+        # Blend: normalize CF ให้สเกลเดียวกับ Popularity แล้ว 70/30
+        cf_max = max_cf
+        pop_max = max(pop_scores.values(), default=1.0)
+        final_scores: Dict[int, float] = {}
 
-    if is_existing_user:
-        # Normalize CF scores เป็นสเกล 0-5
-        cf_normalized = {
-            aid: (cf_scores[aid] / max_cf) * 5
-            for aid in cf_scores
-            if cf_scores[aid] > 0 and max_cf > 0
-        }
-        # Blend: CF 70% + Popularity 30%
-        all_aids = set(cf_normalized.keys()) | set(popularity_scores.keys())
-        final_scores = {}
-        for aid in all_aids:
-            if aid in visited_ids:
-                continue
-            cf_val = cf_normalized.get(aid, 0.0)
-            pop_val = popularity_scores.get(aid, 0.0)
-            blended = cf_val * 0.7 + pop_val * 0.3
-            if blended > 0:
-                final_scores[aid] = blended
-    else:
-        # ผู้ใช้ใหม่ → Popularity (Bayesian Average) 100%
-        final_scores = {
-            aid: popularity_scores[aid]
-            for aid in popularity_scores
-            if popularity_scores[aid] > 0 and aid not in visited_ids
-        }
+        candidate_ids = (set(cf_scores.keys()) | set(pop_scores.keys())) - visited_in_cat
+        for place_id in candidate_ids:
+            cf_norm = (cf_scores.get(place_id, 0.0) / cf_max) * pop_max
+            pop_val = pop_scores.get(place_id, 0.0)
+            score = cf_norm * 0.7 + pop_val * 0.3
+            if score > 0:
+                final_scores[place_id] = score
 
-    target_aliases = CATEGORY_ALIASES.get(category_key, [category_label])
+        return final_scores
 
-    # เรียงจากคะแนนมากไปน้อย แล้วนำตามจำนวน limit (เช่น 100 อันดับแรก)
-    sorted_ids = sorted(final_scores, key=final_scores.__getitem__, reverse=True)
+    # Fallback: Popularity ล้วน (กรองสถานที่ที่เคยไปแล้วออก)
+    return {pid: score for pid, score in pop_scores.items() if pid not in visited_in_cat}
 
-    entries = []
-    for attraction_id in sorted_ids:
-        if len(entries) >= limit:
-            break
-        row = attraction_map.get(attraction_id)
+
+def _build_category_recommendations(
+    category_label: str,
+    target_aliases: List[str],
+    raw_scores: Dict[int, float],
+    attraction_map: Dict[int, Dict[str, Any]],
+    max_items: int = 100
+) -> List[Dict[str, Any]]:
+    """Normalize คะแนนให้อยู่ในช่วง 0.0 - 5.0 เฉพาะในหมวดหมู่นี้ และแปลงเป็นโครงสร้างผลลัพธ์"""
+    if not raw_scores:
+        return []
+
+    # Normalize คะแนนเต็ม 5.0 เฉพาะหมวดหมู่นี้อย่างอิสระ
+    max_score = max(raw_scores.values(), default=1.0)
+    if max_score <= 0:
+        max_score = 1.0
+
+    # จัดเรียงตามคะแนนดิบจากมากไปน้อย
+    sorted_places = sorted(raw_scores.items(), key=lambda x: x[1], reverse=True)
+
+    category_results: List[Dict[str, Any]] = []
+
+    for place_id, score in sorted_places:
+        row = attraction_map.get(place_id)
         if not row:
             continue
 
+        # กรองเฉพาะสถานที่ที่มี category ใน DB ตรงกับหมวดหมู่นี้
         db_categories_str = str(row.get("categories") or "").strip()
-        # กรองเฉพาะสถานที่ที่มีหมวดหมู่ระบุตรงกับ target_aliases (หากไม่มีหมวดหมู่ระบุใน DB ให้ข้าม)
-        if not db_categories_str or db_categories_str == "None" or not any(alias in db_categories_str for alias in target_aliases):
+        if (
+            not db_categories_str
+            or db_categories_str == "None"
+            or not any(alias in db_categories_str for alias in target_aliases)
+        ):
             continue
 
-        entries.append({
-            "id": str(attraction_id),
+        normalized_score = round((score / max_score) * 5.0, 2)
+
+        category_results.append({
+            "id": str(place_id),
             "name": row.get("attraction_name") or "Unknown",
             "type": row.get("type_name") or "ไม่ระบุประเภท",
             "category": db_categories_str,
             "target_category": category_label,
             "lat": _safe_float(row.get("lat")),
             "lng": _safe_float(row.get("lng")),
-            "score": round(final_scores[attraction_id], 2),  # คะแนนเฉลี่ย 0-5 ดาว
+            "score": normalized_score,
             "image": row.get("attraction_image") or "",
             "sacred_object": row.get("sacred_obj") or "-",
             "offerings": row.get("offering") or "-",
         })
 
-    return entries, is_existing_user
+        if len(category_results) >= max_items:
+            break
 
+    return category_results
 
-# ---------------------------------------------------------------------------
-# Main recommendation endpoint
-# ---------------------------------------------------------------------------
 
 @router.get("/recommend/{user_id}", response_model=RecommendationResponse)
 @router.get("/api/recommend/{user_id}", response_model=RecommendationResponse)
 async def recommend(user_id: int):
-    """แนะนำสถานที่ศักดิ์สิทธิ์สำหรับผู้ใช้ (การงาน, โชคลาภ, ความรัก)
+    """แนะนำสถานที่ศักดิ์สิทธิ์สำหรับผู้ใช้ (การงาน, การเงิน, ความรัก)
 
-    - ผู้ใช้เก่า (เคยให้คะแนน) → ใช้โมเดล Collaborative Filtering (.pkl)
-    - ผู้ใช้ใหม่ (ไม่เคยให้คะแนน) → ใช้คะแนน Popularity จากฐานข้อมูล MySQL
+    หลักการ:
+    - ประมวลผลและ Normalize คะแนนแยกตามหมวดหมู่อย่างเป็นอิสระ 100%
+    - ผู้ใช้ที่เคยให้คะแนนในหมวดใด จะได้รับคะแนนแบบ CF 70% + Popularity 30% เฉพาะหมวดนั้น
+    - หมวดที่ยังไม่เคยให้คะแนน จะได้รับคะแนน Popularity 100% ของหมวดนั้นโดยไม่ถูกกระทบ
     """
     _load_models_once()
 
@@ -445,43 +366,43 @@ async def recommend(user_id: int):
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
 
-        # 1. ดึงข้อมูลสถานที่ทั้งหมด
+        # 1. ดึงข้อมูลสถานที่ทั้งหมด (พร้อม category จาก DB)
         attraction_map = _fetch_attractions_map(cursor)
 
-        # 2. ดึงคะแนนรีวิวทั้งหมด เพื่อคำนวณ Popularity และสถานที่ที่ผู้ใช้เคยไป
-        popularity_scores, user_visited_ids = _fetch_ratings_and_popularity(cursor, user_id)
+        # 2. ตรวจสอบสถานะว่าผู้ใช้เคยให้คะแนนในระบบหรือไม่
+        is_new_user = not any(
+            mats["user_item_matrix"] is not None and user_id in mats["user_item_matrix"].index
+            for mats in models.values()
+        )
 
-        recommendation_entries = []
-        is_new_user = True
+        # 3. คำนวณและ Normalize คะแนนแยกทีละหมวดหมู่อย่างเป็นอิสระ
+        results: List[Dict[str, Any]] = []
 
-        # 3. คำนวณคำแนะนำแต่ละหมวดหมู่ (ดึงหมวดละ 100 สถานที่)
-        for category_key, category_label in MODEL_CATEGORIES.items():
-            cf_scores = _compute_cf_scores(category_key, user_id, user_visited_ids)
-            # กรอง CF scores ให้เหลือเฉพาะสถานที่ที่ตรงหมวดหมู่
-            cf_scores = _filter_cf_by_category(cf_scores, category_key, attraction_map)
-            entries, is_existing_user = _generate_category_entries(
-                category_key=category_key,
-                category_label=category_label,
-                popularity_scores=popularity_scores[category_key],
-                cf_scores=cf_scores,
+        for cat_key, cat_label in MODEL_CATEGORIES.items():
+            mats = models.get(cat_key, {})
+            item_matrix = mats.get("user_item_matrix")
+            sim_matrix = mats.get("user_similarity")
+            target_aliases = CATEGORY_ALIASES.get(cat_key, [cat_label])
+
+            # คำนวณคะแนนเฉพาะหมวดหมู่นี้
+            raw_scores = _compute_category_scores(user_id, item_matrix, sim_matrix)
+
+            # Normalize คะแนนเต็ม 5.0 เฉพาะหมวดหมู่นี้ และเพิ่มลงผลลัพธ์
+            cat_recommendations = _build_category_recommendations(
+                category_label=cat_label,
+                target_aliases=target_aliases,
+                raw_scores=raw_scores,
                 attraction_map=attraction_map,
-                visited_ids=user_visited_ids,
-                limit=150,
+                max_items=100
             )
-            recommendation_entries.extend(entries)
-            if is_existing_user:
-                is_new_user = False
+            results.extend(cat_recommendations)
 
-        # 4. รวมผลลัพธ์ เรียงตามคะแนน
-        recommendation_entries.sort(key=lambda item: item["score"], reverse=True)
-
-        # 5. คำนวณลำดับหมวดหมู่ตามคะแนนที่ผู้ใช้ให้มากที่สุด
-        category_order = _get_user_category_order(cursor, user_id)
+        category_order = ["การงาน", "การเงิน", "ความรัก"]
 
         return {
             "user_id": str(user_id),
             "is_new_user": is_new_user,
-            "recommendations": recommendation_entries,
+            "recommendations": results,
             "category_order": category_order,
         }
 
@@ -492,38 +413,3 @@ async def recommend(user_id: int):
             cursor.close()
         if connection:
             connection.close()
-
-
-def _get_user_category_order(cursor, user_id: int) -> List[str]:
-    """คำนวณลำดับหมวดหมู่สถานที่ตามผลรวมคะแนนการให้คะแนนของผู้ใช้ (มากไปน้อย)
-
-    ดึงรายชื่อหมวดหมู่จากตาราง category ในฐานข้อมูล MySQL มาประมวลผลตามจริง
-    """
-    cursor.execute("SELECT category_name FROM category ORDER BY category_id ASC")
-    db_cat_rows = cursor.fetchall()
-    db_categories = [r["category_name"] for r in db_cat_rows if r.get("category_name")]
-    if not db_categories:
-        db_categories = ["การงาน", "โชคลาภ", "ความรัก"]
-
-    cursor.execute(
-        "SELECT rating_work, rating_finance, rating_love FROM rating WHERE user_id = %s",
-        (user_id,)
-    )
-    rows = cursor.fetchall()
-
-    cat_scores = {cat: 0.0 for cat in db_categories}
-
-    for row in rows:
-        if "การงาน" in cat_scores:
-            cat_scores["การงาน"] += _safe_float(row.get("rating_work"))
-        if "โชคลาภ" in cat_scores:
-            cat_scores["โชคลาภ"] += _safe_float(row.get("rating_finance"))
-        elif "การเงิน" in cat_scores:
-            cat_scores["การเงิน"] += _safe_float(row.get("rating_finance"))
-        if "ความรัก" in cat_scores:
-            cat_scores["ความรัก"] += _safe_float(row.get("rating_love"))
-
-    # เรียงลำดับตามคะแนนสะสมจากมากไปน้อย
-    sorted_categories = sorted(db_categories, key=lambda cat: cat_scores.get(cat, 0.0), reverse=True)
-    return sorted_categories
-

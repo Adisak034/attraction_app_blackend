@@ -95,7 +95,7 @@ function formatCoordinateCell(value: number | string | null | undefined): string
 
 /** ตัดข้อความที่ยาวเกินกำหนดและใส่ '...' พร้อม Tooltip แสดงข้อความเต็ม */
 function formatTextSnippet(value: string | null | undefined, maxLen = 30): React.ReactNode {
-  if (!value) return '-';
+  if (!value || value === 'null' || (typeof value === 'string' && value.trim() === '')) return '-';
   const textStr = String(value);
   const truncated = textStr.length > maxLen ? `${textStr.substring(0, maxLen)}...` : textStr;
   return (
@@ -113,7 +113,7 @@ function getLookupTitle(
   if (id === null || id === undefined || id === '') return '-';
   const parsedId = Number(id);
   if (!Number.isFinite(parsedId)) return '-';
-  return lookupMap.get(parsedId) || String(id);
+  return lookupMap.get(parsedId) || '-';
 }
 
 
@@ -449,12 +449,15 @@ export default function AttractionAdminPage() {
     }
 
     const payload = {
-      ...formData,
-      lat: formData.lat ? parseFloat(formData.lat) : null,
-      lng: formData.lng ? parseFloat(formData.lng) : null,
+      attraction_name: formData.attraction_name.trim(),
       type_id: formData.type_id ? parseInt(formData.type_id, 10) : null,
       district_id: formData.district_id ? parseInt(formData.district_id, 10) : null,
       sect_id: formData.sect_id ? parseInt(formData.sect_id, 10) : null,
+      lat: formData.lat && formData.lat.trim() ? parseFloat(formData.lat) : null,
+      lng: formData.lng && formData.lng.trim() ? parseFloat(formData.lng) : null,
+      sacred_obj: formData.sacred_obj && formData.sacred_obj.trim() ? formData.sacred_obj.trim() : null,
+      offering: formData.offering && formData.offering.trim() ? formData.offering.trim() : null,
+      category_ids: formData.category_ids,
     };
 
     try {
@@ -492,11 +495,11 @@ export default function AttractionAdminPage() {
             .then((data: Record<string, unknown>) => {
               setFormData({
                 attraction_name: (data.attraction_name as string) || '',
-                type_id: data.type_id ? String(data.type_id) : '',
-                district_id: data.district_id ? String(data.district_id) : '',
-                sect_id: data.sect_id ? String(data.sect_id) : '',
-                lat: data.lat ? String(data.lat) : '',
-                lng: data.lng ? String(data.lng) : '',
+                type_id: data.type_id !== null && data.type_id !== undefined ? String(data.type_id) : '',
+                district_id: data.district_id !== null && data.district_id !== undefined ? String(data.district_id) : '',
+                sect_id: data.sect_id !== null && data.sect_id !== undefined ? String(data.sect_id) : '',
+                lat: data.lat !== null && data.lat !== undefined ? String(data.lat) : '',
+                lng: data.lng !== null && data.lng !== undefined ? String(data.lng) : '',
                 sacred_obj: (data.sacred_obj as string) || '',
                 offering: (data.offering as string) || '',
                 category_ids: Array.isArray(data.categories)
@@ -530,21 +533,21 @@ export default function AttractionAdminPage() {
     { key: 'sacred_obj', label: 'Sacred Objects', render: (val: unknown) => formatTextSnippet(val as string | null) },
     { key: 'offering', label: 'Offering', render: (val: unknown) => formatTextSnippet(val as string | null) },
     { key: 'categories', label: 'Categories', sortable: false, render: (val: unknown) => (val as string) || '-' },
-    // {
-    //   key: 'actions',
-    //   label: 'Actions',
-    //   render: (_: unknown, row: Attraction) => (
-    //     <div className="flex gap-2 justify-center">
-    //       {/* <button
-    //         type="button"
-    //         className="edit-attraction-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm"
-    //         data-attraction-id={row.attraction_id}
-    //       >
-    //         Edit
-    //       </button> */}
-    //     </div>
-    //   ),
-    // },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_: unknown, row: Attraction) => (
+        <div className="flex gap-2 justify-center">
+          {<button
+            type="button"
+            className="edit-attraction-btn bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-sm"
+            data-attraction-id={row.attraction_id}
+          >
+            Edit
+          </button>}
+        </div>
+      ),
+    },
   ];
 
   return (

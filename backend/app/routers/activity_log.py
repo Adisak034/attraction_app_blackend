@@ -39,6 +39,7 @@ def _fetch_recent_activity_logs(cursor: Any, limit: int) -> List[Dict[str, Any]]
             al.log_id,
             al.user_id,
             um.user_name,
+            um.role,
             al.attraction_id,
             a.attraction_name,
             al.action_type,
@@ -54,23 +55,25 @@ def _fetch_recent_activity_logs(cursor: Any, limit: int) -> List[Dict[str, Any]]
 
 
 def _fetch_activity_summary_stats(cursor: Any) -> Dict[str, Any]:
-    """ดึงสถิติภาพรวมจำนวนกิจกรรมทั้งหมด จำนวนผู้ใช้ไม่ซ้ำ และจำนวนสถานที่ที่ถูกเข้าชม"""
+    """ดึงสถิติภาพรวมจำนวนกิจกรรมทั้งหมด จำนวนผู้ใช้ไม่ซ้ำ และจำนวนสถานที่ที่ถูกเข้าชม (เฉพาะผู้ใช้จริง)"""
     cursor.execute("""
         SELECT 
-            (SELECT COUNT(*) FROM activity_log) as total,
-            (SELECT COUNT(DISTINCT user_id) FROM activity_log) as unique_users,
-            (SELECT COUNT(DISTINCT attraction_id) FROM activity_log) as unique_attractions
+            (SELECT COUNT(*) FROM activity_log al LEFT JOIN `user` u ON al.user_id = u.user_id WHERE u.role IS NULL OR LOWER(REPLACE(REPLACE(u.role, ' ', ''), '_', '')) != 'usermodel') as total,
+            (SELECT COUNT(DISTINCT al.user_id) FROM activity_log al LEFT JOIN `user` u ON al.user_id = u.user_id WHERE u.role IS NULL OR LOWER(REPLACE(REPLACE(u.role, ' ', ''), '_', '')) != 'usermodel') as unique_users,
+            (SELECT COUNT(DISTINCT al.attraction_id) FROM activity_log al LEFT JOIN `user` u ON al.user_id = u.user_id WHERE u.role IS NULL OR LOWER(REPLACE(REPLACE(u.role, ' ', ''), '_', '')) != 'usermodel') as unique_attractions
     """)
     result = cursor.fetchone()
     return result or {"total": 0, "unique_users": 0, "unique_attractions": 0}
 
 
 def _fetch_top_attractions_by_views(cursor: Any, limit: int = 10) -> List[Dict[str, Any]]:
-    """ดึงรายชื่อสถานที่ที่มีการบันทึกกิจกรรมเข้าชมมากที่สุด Top N"""
+    """ดึงรายชื่อสถานที่ที่มีการบันทึกกิจกรรมเข้าชมมากที่สุด Top N (เฉพาะผู้ใช้จริง)"""
     query = """
         SELECT a.attraction_id, a.attraction_name, COUNT(*) as view_count
         FROM activity_log al
+        LEFT JOIN `user` u ON al.user_id = u.user_id
         LEFT JOIN attraction a ON al.attraction_id = a.attraction_id
+        WHERE u.role IS NULL OR LOWER(REPLACE(REPLACE(u.role, ' ', ''), '_', '')) != 'usermodel'
         GROUP BY al.attraction_id, a.attraction_name
         ORDER BY view_count DESC
         LIMIT %s

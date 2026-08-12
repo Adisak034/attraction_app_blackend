@@ -54,7 +54,7 @@ function LandingHeroTitle() {
   return (
     <>
       <div className="mb-20 flex justify-center items-center gap-3">
-        <span className="text-faith-gold font-black tracking-[0.3em] text-sm uppercase">Faith Nakonpathom</span>
+        {/* <span className="text-faith-gold font-black tracking-[0.3em] text-sm uppercase">Faith Nakonpathom</span> */}
       </div>
 
       <motion.h1

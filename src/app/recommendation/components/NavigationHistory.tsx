@@ -33,6 +33,7 @@ interface NavigationHistoryProps {
   onBack: () => void;
   onRatePlace: (attractionId: string, attractionName: string) => void;
   refreshTrigger?: number;
+  onSelectPlace?: (attractionId: number | string) => void;
 }
 
 // =============================================================================
@@ -43,9 +44,10 @@ interface NavHistoryRowProps {
   item: NavHistoryItem;
   index: number;
   onRate: () => void;
+  onSelect?: () => void;
 }
 
-function NavHistoryRow({ item, index, onRate }: NavHistoryRowProps) {
+function NavHistoryRow({ item, index, onRate, onSelect }: NavHistoryRowProps) {
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
@@ -53,9 +55,9 @@ function NavHistoryRow({ item, index, onRate }: NavHistoryRowProps) {
       transition={{ delay: index * 0.04 }}
       className="bg-[#2D0A0A] border border-white/15 rounded-xl p-3 sm:p-4 hover:border-faith-gold/50 transition-all shadow-md flex justify-between items-center gap-3 group"
     >
-      <div className="min-w-0 flex-1">
-        <h3 className="text-sm font-semibold text-faith-gold mb-1 truncate flex items-center gap-2">
-          <MapPin size={16} className="shrink-0" /> <span className="truncate">{item.attraction_name}</span>
+      <div className="min-w-0 flex-1 cursor-pointer" onClick={onSelect}>
+        <h3 className="text-sm font-semibold text-faith-gold group-hover:text-amber-300 transition-colors mb-1 truncate flex items-center gap-2">
+          <MapPin size={16} className="shrink-0 text-faith-gold" /> <span className="truncate">{item.attraction_name}</span>
         </h3>
         {item.last_navigated_at && (
           <p className="text-xs text-gray-400">
@@ -94,6 +96,7 @@ export default function NavigationHistory({
   onBack,
   onRatePlace,
   refreshTrigger = 0,
+  onSelectPlace,
 }: NavigationHistoryProps) {
   const [history, setHistory] = useState<NavHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,6 +176,7 @@ export default function NavigationHistory({
                 item={item}
                 index={index}
                 onRate={() => onRatePlace(item.attraction_id.toString(), item.attraction_name)}
+                onSelect={() => onSelectPlace?.(item.attraction_id)}
               />
             ))}
           </div>

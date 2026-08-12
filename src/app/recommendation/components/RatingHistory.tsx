@@ -34,6 +34,7 @@ interface RatingHistoryProps {
   userId: string;
   userName: string;
   onBack: () => void;
+  onSelectPlace?: (attractionId: number | string) => void;
 }
 
 // =============================================================================
@@ -76,15 +77,17 @@ function CategoryStars({ label, rating }: CategoryStarsProps) {
 interface RatingRowProps {
   item: Rating;
   index: number;
+  onSelect?: () => void;
 }
 
-function RatingRow({ item, index }: RatingRowProps) {
+function RatingRow({ item, index, onSelect }: RatingRowProps) {
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.04 }}
-      className="bg-[#2D0A0A] border border-white/15 rounded-xl p-4 hover:border-faith-gold/50 transition-all shadow-md flex flex-col gap-3 group"
+      onClick={onSelect}
+      className="bg-[#2D0A0A] border border-white/15 rounded-xl p-4 hover:border-faith-gold/50 transition-all shadow-md flex flex-col gap-3 group cursor-pointer hover:scale-[1.01]"
     >
       <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2">
         <h3 className="text-base font-bold text-white group-hover:text-faith-gold transition-colors flex items-center gap-2">
@@ -114,7 +117,7 @@ function RatingRow({ item, index }: RatingRowProps) {
 // Main Component
 // =============================================================================
 
-export default function RatingHistory({ userId, userName, onBack }: RatingHistoryProps) {
+export default function RatingHistory({ userId, userName, onBack, onSelectPlace }: RatingHistoryProps) {
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +191,12 @@ export default function RatingHistory({ userId, userName, onBack }: RatingHistor
         ) : (
           <div className="space-y-3">
             {filteredRatings.map((item, index) => (
-              <RatingRow key={item.rating_id || index} item={item} index={index} />
+              <RatingRow
+                key={item.rating_id || index}
+                item={item}
+                index={index}
+                onSelect={() => onSelectPlace?.(item.attraction_id)}
+              />
             ))}
           </div>
         )}

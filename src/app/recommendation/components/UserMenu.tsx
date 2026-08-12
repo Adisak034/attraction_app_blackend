@@ -102,7 +102,7 @@ export default function UserMenu({
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="px-6 py-2 bg-white/10 hover:bg-faith-gold text-white hover:text-[#1A0404] rounded-full text-xs font-black uppercase tracking-widest transition-all backdrop-blur-md border border-white/20 hover:border-faith-gold group flex items-center gap-2"
+        className="px-6 py-2 bg-white/10 hover:bg-faith-gold text-white hover:text-[#1A0404] rounded-full text-xs font-black tracking-normal transition-all backdrop-blur-md border border-white/20 hover:border-faith-gold group flex items-center gap-2"
       >
         <span className="hidden sm:inline truncate max-w-[120px]">ผู้ใช้: {userName.substring(0, 12)}</span>
         <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>

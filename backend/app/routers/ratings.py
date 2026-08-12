@@ -2,7 +2,7 @@
 # ratings.py
 # =============================================================================
 # Router สำหรับ API จัดการคะแนนรีวิวสถานที่ (Ratings)
-# คะแนนแบ่งเป็น 3 มิติ: การงาน (work), การเงิน/โชคลาภ (finance),
+# คะแนนแบ่งเป็น 3 มิติ: การงาน (work), การเงิน (finance),
 #                        และความรัก (love) ช่วง 0-5
 # Endpoints:
 #   GET    /api/rating              → ดึงคะแนนรีวิวทั้งหมด พร้อมชื่อผู้ใช้/สถานที่
@@ -15,6 +15,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException
 from app.core.database import get_connection
 from app.schemas.schemas import MessageResponse, RatingCreate, RatingDetailResponse, RatingResponse
+from app.routers.recommendation import recalculate_model_in_memory
 
 # กำหนด router สำหรับจัดการคะแนนรีวิว
 router = APIRouter(prefix="/api/rating", tags=["ratings"])
@@ -45,6 +46,7 @@ def _fetch_all_ratings_with_names(cursor: Any) -> List[Dict[str, Any]]:
             r.rating_love,
             r.created_at,
             u.user_name,
+            u.role,
             a.attraction_name
         FROM rating r
         JOIN `user` u ON r.user_id = u.user_id
@@ -144,6 +146,19 @@ async def create_rating(rating: RatingCreate):
         _insert_rating_activity_log(cursor, rating.user_id, rating.attraction_id)
 
         connection.commit()
+
+        # Real-time model recalculation (ตาม main (1).py)
+        # recalculate เฉพาะหมวดที่มีคะแนน > 0
+        try:
+            if (rating.rating_work or 0) > 0:
+                recalculate_model_in_memory("work", connection)
+            if (rating.rating_finance or 0) > 0:
+                recalculate_model_in_memory("finance", connection)
+            if (rating.rating_love or 0) > 0:
+                recalculate_model_in_memory("love", connection)
+        except Exception as recalc_err:
+            print(f"Warning: Model recalculation failed (non-blocking): {recalc_err}")
+
         return {
             "rating_id": rating_id,
             "user_id": rating.user_id,

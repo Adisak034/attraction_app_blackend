@@ -55,6 +55,8 @@ export function setAuthSession(session: AuthSession): void {
  */
 export function clearAuthSession(): void {
   localStorage.removeItem(AUTH_STORAGE_KEY);
+  localStorage.removeItem('faith_userId');
+  localStorage.removeItem('faith_userName');
 }
 
 // =============================================================================

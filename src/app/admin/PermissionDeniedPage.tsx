@@ -73,7 +73,7 @@ export default function PermissionDeniedPage() {
   // จัดการล้างข้อมูล Session ออกจากระบบ และกลับไปยังหน้าหลัก
   const handleLogoutAndRelogin = () => {
     clearAuthSession();
-    navigate('/', { replace: true });
+    window.location.href = '/';
   };
 
   return (

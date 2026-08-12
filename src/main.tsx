@@ -141,7 +141,7 @@ function AdminLayout() {
 
   const handleLogout = () => {
     clearAuthSession();
-    navigate('/', { replace: true });
+    window.location.href = '/';
   };
 
   return (

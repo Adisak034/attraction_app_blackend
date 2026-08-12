@@ -51,7 +51,7 @@ def _get_cors_config() -> Tuple[List[str], bool]:
         "http://127.0.0.1:3003",
         "http://127.0.0.1:4173",
         "http://127.0.0.1:5173",
-        "http://localhost"
+        "http://localhost",
     ]
 
     cors_origins = default_origins + [origin.strip() for origin in allowed_from_env if origin.strip()]
@@ -102,7 +102,7 @@ app = FastAPI(
     title="Temple Attractions & Recommendation API",
     description="""
 **คุณสมบัติหลัก:**
-- 🏛️ **Attractions Management:** จัดการข้อมูลสถานที่ศักดิ์สิทธิ์, ของไหว้, และหมวดหมู่คำขอพร (การงาน, โชคลาภ, ความรัก)
+- 🏛️ **Attractions Management:** จัดการข้อมูลสถานที่ศักดิ์สิทธิ์, ของไหว้, และหมวดหมู่คำขอพร (การงาน, การเงิน, ความรัก)
 - 🤖 **Recommendation System:** ระบบแนะนำสถานที่ (Existing User ใช้ Pickle CF 100%, New User ใช้ Popularity 100%)
 - 📊 **Activity Logs & Navigations:** บันทึกประวัติการนำทางและสถิติการใช้งาน
 - ⭐ **Ratings:** จัดการคะแนนรีวิวตามหมวดหมู่

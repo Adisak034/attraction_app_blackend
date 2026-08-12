@@ -259,7 +259,7 @@ interface RecommendationListProps {
 
 export default function RecommendationList({
   recommendations,
-  categoryOrder = ['การงาน', 'โชคลาภ', 'ความรัก'],
+  categoryOrder = ['การงาน', 'การเงิน', 'ความรัก'],
   isNewUser,
   error,
   loading,
@@ -272,13 +272,13 @@ export default function RecommendationList({
     return <ErrorStateBox error={error} loading={loading} onRetry={onRetry} />;
   }
 
-  // กำหนดลำดับการแสดงผลหมวดหมู่ตามลำดับที่ต้องการเสมอ: การงาน -> โชคลาภ -> ความรัก
-  const PREFERRED_ORDER = ['การงาน', 'โชคลาภ', 'ความรัก'];
+  // กำหนดลำดับการแสดงผลหมวดหมู่ตามลำดับที่ต้องการเสมอ: การงาน -> การเงิน -> ความรัก
+  const PREFERRED_ORDER = ['การงาน', 'การเงิน', 'ความรัก'];
 
   const sortCategories = (cats: string[]): string[] => {
     return [...cats].sort((a, b) => {
-      const idxA = PREFERRED_ORDER.findIndex((p) => a.includes(p) || (p === 'โชคลาภ' && a === 'การเงิน'));
-      const idxB = PREFERRED_ORDER.findIndex((p) => b.includes(p) || (p === 'โชคลาภ' && b === 'การเงิน'));
+      const idxA = PREFERRED_ORDER.findIndex((p) => a.includes(p) || (p === 'การเงิน' && a === 'โชคลาภ'));
+      const idxB = PREFERRED_ORDER.findIndex((p) => b.includes(p) || (p === 'การเงิน' && b === 'โชคลาภ'));
       return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
     });
   };
