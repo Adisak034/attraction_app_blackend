@@ -266,7 +266,12 @@ export default function App() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
+    const pw = formData.password || '';
+    if (pw.length < 8 || !/[a-z]/.test(pw) || !/[A-Z]/.test(pw)) {
+      setError('รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร และประกอบด้วยตัวอักษรพิมพ์เล็กและพิมพ์ใหญ่');
+      return;
+    }
+    if (pw !== formData.confirmPassword) {
       setError('รหัสผ่านไม่ตรงกัน');
       return;
     }

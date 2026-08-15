@@ -444,7 +444,7 @@ export default function UserAdminPage() {
           >
             Export to CSV
           </button> */}
-          <button
+          {/* <button
             onClick={() => {
               setModalMode('add');
               setEditingId(null);
@@ -454,7 +454,7 @@ export default function UserAdminPage() {
             className="bg-blue-600 text-white px-5 py-2 rounded-md shadow-md hover:bg-blue-700 font-semibold text-sm transition"
           >
             + Add User
-          </button>
+          </button> */}
         </div>
       </div>
 

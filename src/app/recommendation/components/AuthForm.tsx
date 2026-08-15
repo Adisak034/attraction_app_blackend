@@ -69,6 +69,7 @@ interface AuthInputFieldProps {
   icon: React.ReactNode;
   rightAction?: React.ReactNode;
   required?: boolean;
+  hint?: React.ReactNode;
 }
 
 function AuthInputField({
@@ -80,6 +81,7 @@ function AuthInputField({
   icon,
   rightAction,
   required = true,
+  hint,
 }: AuthInputFieldProps) {
   return (
     <div className="space-y-2">
@@ -99,6 +101,11 @@ function AuthInputField({
         />
         {rightAction && <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2">{rightAction}</div>}
       </div>
+      {hint && (
+        <p className="text-[11px] sm:text-xs text-gray-400 pl-1 leading-relaxed">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -198,6 +205,11 @@ export default function AuthForm({
             value={formData.password}
             onChange={(val) => updateField('password', val)}
             rightAction={passwordToggleBtn}
+            hint={
+              isRegister
+                ? 'รหัสผ่านอย่างน้อย 8 ตัวอักษร และต้องมีตัวอักษรพิมพ์เล็กและพิมพ์ใหญ่'
+                : undefined
+            }
           />
 
           {isRegister && (

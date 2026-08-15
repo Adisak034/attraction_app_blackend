@@ -163,6 +163,12 @@ async def create_user(user: UserCreate):
     if not user.user_name or not user.password:
         raise HTTPException(status_code=400, detail="Username and password are required")
 
+    if len(user.password) < 8 or not any(c.islower() for c in user.password) or not any(c.isupper() for c in user.password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 characters long and contain both uppercase and lowercase letters"
+        )
+
     connection = None
     cursor = None
     try:
@@ -221,6 +227,13 @@ async def get_user(id: int):
 @router.put("/{id}", response_model=MessageResponse)
 async def update_user(id: int, user: UserUpdate):
     """อัปเดตข้อมูลผู้ใช้งานตาม ID"""
+    if user.password is not None:
+        if len(user.password) < 8 or not any(c.islower() for c in user.password) or not any(c.isupper() for c in user.password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must be at least 8 characters long and contain both uppercase and lowercase letters"
+            )
+
     connection = None
     cursor = None
     try:
