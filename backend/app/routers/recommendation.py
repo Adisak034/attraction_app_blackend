@@ -132,7 +132,7 @@ def _load_models_once(force: bool = False):
 # ---------------------------------------------------------------------------
 
 def recalculate_model_in_memory(category: str, connection) -> None:
-    """คำนวณ cosine similarity ใหม่ทันทีหลังให้คะแนน (ไม่ save .pkl)
+    """คำนวณ cosine similarity ใหม่ทันทีหลังให้คะแนน
 
     อ่าน rating จากตาราง `rating` → สร้าง user-item matrix → cosine similarity
     แล้วอัปเดต models[category] ใน memory ทันที
@@ -298,11 +298,8 @@ def _build_category_recommendations(
     attraction_map: Dict[int, Dict[str, Any]],
     max_items: int = 100
 ) -> List[Dict[str, Any]]:
-    """Normalize คะแนนให้อยู่ในช่วง 0.0 - 5.0 เฉพาะในหมวดหมู่นี้ และแปลงเป็นโครงสร้างผลลัพธ์"""
     if not raw_scores:
         return []
-
-    # Normalize คะแนนเต็ม 5.0 เฉพาะหมวดหมู่นี้อย่างอิสระ
     max_score = max(raw_scores.values(), default=1.0)
     if max_score <= 0:
         max_score = 1.0
@@ -351,13 +348,6 @@ def _build_category_recommendations(
 @router.get("/recommend/{user_id}", response_model=RecommendationResponse)
 @router.get("/api/recommend/{user_id}", response_model=RecommendationResponse)
 async def recommend(user_id: int):
-    """แนะนำสถานที่ศักดิ์สิทธิ์สำหรับผู้ใช้ (การงาน, การเงิน, ความรัก)
-
-    หลักการ:
-    - ประมวลผลและ Normalize คะแนนแยกตามหมวดหมู่อย่างเป็นอิสระ 100%
-    - ผู้ใช้ที่เคยให้คะแนนในหมวดใด จะได้รับคะแนนแบบ CF 70% + Popularity 30% เฉพาะหมวดนั้น
-    - หมวดที่ยังไม่เคยให้คะแนน จะได้รับคะแนน Popularity 100% ของหมวดนั้นโดยไม่ถูกกระทบ
-    """
     _load_models_once()
 
     connection = None
@@ -375,7 +365,7 @@ async def recommend(user_id: int):
             for mats in models.values()
         )
 
-        # 3. คำนวณและ Normalize คะแนนแยกทีละหมวดหมู่อย่างเป็นอิสระ
+        # 3. คำนวณคะแนนแยกทีละหมวดหมู่
         results: List[Dict[str, Any]] = []
 
         for cat_key, cat_label in MODEL_CATEGORIES.items():
@@ -386,8 +376,6 @@ async def recommend(user_id: int):
 
             # คำนวณคะแนนเฉพาะหมวดหมู่นี้
             raw_scores = _compute_category_scores(user_id, item_matrix, sim_matrix)
-
-            # Normalize คะแนนเต็ม 5.0 เฉพาะหมวดหมู่นี้ และเพิ่มลงผลลัพธ์
             cat_recommendations = _build_category_recommendations(
                 category_label=cat_label,
                 target_aliases=target_aliases,
