@@ -58,11 +58,11 @@ function ResultsNavBar({ userName, isAdmin, onNavigateAdmin, onStepChange, onLog
   return (
     <nav className="flex justify-between items-center px-6 md:px-12 py-6 absolute w-full z-50">
       <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onStepChange('selection')}>
-        <div className="flex flex-col">
+        {/* <div className="flex flex-col">
           <span className="text-xl font-black gold-gradient-text tracking-tighter uppercase leading-none">
             Faith Nakonpathom
           </span>
-        </div>
+        </div> */}
       </div>
 
       <div className="flex items-center gap-4">
@@ -120,10 +120,10 @@ function ResultsFooter() {
     <footer className="w-full bg-black/40 pt-6 pb-3 border-t border-white/10 mt-auto backdrop-blur-lg">
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between mb-3 gap-4">
         <div className="max-w-sm">
-          <div className="flex items-center gap-3 mb-2 opacity-60">
+          {/* <div className="flex items-center gap-3 mb-2 opacity-60">
             <Compass size={32} className="text-faith-gold" />
             <span className="text-xl font-black tracking-widest text-white">Faith Nakonpathom</span>
-          </div>
+          </div> */}
           <p className="text-xs text-gray-400 leading-relaxed max-w-xs font-light">
             ค้นพบพลังแห่งจิตวิญญาณแห่งนครปฐม นำความสงบสุขและความเป็นสิริมงคลมาสู่ชีวิตผ่านการแนะนำสถานที่ศักดิ์สิทธิ์
           </p>
